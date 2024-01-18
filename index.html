@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Editor</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="menus"></div>
+    <header></header>
+    <div class="pane edit-board">
+        <div class="head">
+            <h2>Edit Board</h2>
+            <div class="close">X</div>
+        </div>
+        <hr>
+        <div class="block">
+            <p>Title</p>
+            <input type="text" class="i-title">
+        </div>
+        <div class="block">
+            <p>Text</p>
+            <textarea class="ta-text" name="" id="" cols="30" rows="10"></textarea>
+        </div>
+        <div class="block">
+            <p>Choices</p>
+            <textarea class="ta-choices" name="" id="" cols="30" rows="10"></textarea>
+        </div>
+    </div>
+    <div class="pane edit-choice"></div>
+    <div class="main">
+        <div class="toolbar">
+            <div></div>
+            <div class="d-search">
+                <input class="i-search-all" type="text" placeholder="Search...">
+                <button>Search</button>
+            </div>
+            <div></div>
+        </div>
+        <div class="grid2"></div>
+        <div class="grid"></div>
+    </div>
+    <script src="out/main.js"></script>
+</body>
+</html>

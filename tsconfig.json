@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ES2022",
+        "lib": [
+            "DOM",
+            "DOM.Iterable",
+            "ES2022"
+        ],
+        "rootDir": "src",
+        "outDir": "out",
+        "sourceMap": true
+    },
+    "exclude": [
+        "node_modules"
+    ]
+}
