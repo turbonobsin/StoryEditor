@@ -1,9 +1,81 @@
-let grid = document.querySelector(".grid") as HTMLElement;
-let grid2 = document.querySelector(".grid2") as HTMLElement;
-let panes = document.querySelectorAll<HTMLElement>(".pane");
-let pane_editBoard = document.querySelector(".edit-board");
-let pane_editChoice = document.querySelector(".edit-choice");
 let i_searchAll = document.querySelector(".i-search-all") as HTMLInputElement;
+let choiceList = document.querySelector(".choice-list");
+let i_addChoice = document.querySelector(".i-add-choice") as HTMLInputElement;
+let b_addChoice = document.querySelector(".b-add-choice") as HTMLButtonElement;
+let b_resumePlay = document.querySelector(".b-resume-play") as HTMLButtonElement;
+let b_play = document.querySelector(".b-play") as HTMLButtonElement;
+let b_save = document.querySelector(".b-save") as HTMLButtonElement;
+let b_playFromHere = document.querySelector(".b-play-from-here") as HTMLButtonElement;
+let b_export = document.querySelector(".b-export") as HTMLButtonElement;
+let b_import = document.querySelector(".b-import") as HTMLButtonElement;
+let b_reset = document.querySelector(".b-reset") as HTMLButtonElement;
+
+b_export.addEventListener("click",e=>{
+    let o = story.getSaveObj();
+    if(!o) return;
+    let str = JSON.stringify(o);
+    if(!str) return;
+    let filename = prompt("File name used for export",story.filename);
+    if(!filename) return;
+    let a = document.createElement("a");
+    a.href = "data:text/json;charset=utf-8,"+encodeURIComponent(str);
+    a.download = filename+".json";
+    a.click();
+    console.log("exported");
+});
+b_import.addEventListener("click",e=>{
+    let i = document.createElement("input");
+    i.type = "file";
+    i.onchange = function(e){
+        // @ts-ignore
+        let file = e.target.files[0];
+        let reader = new FileReader();
+        reader.onload = function(e2){
+            let text = e2.target.result as string;
+            localStorage.setItem("__SELS-tmp",text);
+            location.reload();
+        };
+        reader.readAsText(file);
+    };
+    i.click();
+});
+b_reset.addEventListener("click",e=>{
+    if(!confirm("Are you sure you want to reset? You will lose anything that hasn't been exported!")) return;
+    resetFile();
+});
+
+function setPlayI(i:number){
+    let str = localStorage.getItem("__SE-PD") || "{locId:0}";
+    let o = JSON.parse(str);
+    o.locId = i;
+    localStorage.setItem("__SE-PD",JSON.stringify(o));
+}
+
+b_addChoice.addEventListener("click",e=>{
+    if(!pane_editBoard.classList.contains("open")) return;
+    let sel = story.selBoards[0];
+    if(!sel) return;
+    let name = i_addChoice.value;
+    if(!name) return;
+
+    let res = sel.addChoice(name.split(","));
+    story.save();
+    i_addChoice.value = "";
+    // loadEditBoard(sel);
+    story.selectBoard(res[0]);
+});
+b_play.addEventListener("click",e=>{
+    story._save();
+    setPlayI(0);
+    location.pathname = "/play";
+});
+b_resumePlay.addEventListener("click",e=>{
+    story._save();
+    location.pathname = "/play";
+});
+b_save.addEventListener("click",e=>{
+    story._save();
+});
 
 function simplifyText(t:string){
     return t.toLowerCase().replaceAll(" ","");
@@ -22,6 +94,12 @@ i_searchAll.addEventListener("input",e=>{
         }
     }
 });
+b_playFromHere.addEventListener("click",e=>{
+    if(story.selBoards.length != 1) return;
+    
+    setPlayI(story.selBoards[0]._id);
+    b_resumePlay.click();
+});
 
 let overPane = false;
 function initPane(c:HTMLElement){
@@ -33,6 +111,7 @@ function initPane(c:HTMLElement){
 }
 function closePane(c:HTMLElement){
     c.classList.remove("open");
+    console.log("CLSOE");
 }
 function closeAllPanes(){
     for(const c of panes){
@@ -47,492 +126,6 @@ for(const c of panes){
         overPane = false;
     });
     initPane(c);
-}
-function loadEditBoard(b:Board){
-    pane_editBoard.classList.add("open");
-    
-    let i_title = pane_editBoard.querySelector(".i-title") as HTMLInputElement;
-    let ta_text = pane_editBoard.querySelector(".ta-text") as HTMLTextAreaElement;
-    let ta_choices = pane_editBoard.querySelector(".ta-choices") as HTMLTextAreaElement;
-
-    i_title.value = b.title;
-    ta_text.value = b.text;
-    ta_choices.value = b.buttons.map(v=>"[["+v.label+"]]").join("\n");
-
-    i_title.onblur = function(){
-        b.title = i_title.value;
-        b.write();
-    };
-    ta_text.onblur = function(){
-        b.text = ta_text.value;
-        b.write();
-    };
-}
-
-let g_gap = 200;
-
-enum ConnectionType{
-    start,
-    path
-}
-let connectionData = [
-    {
-        col:"green"
-    },
-    {
-        col:"gray"
-    }
-];
-class Story{
-    constructor(filename:string){
-        this.filename = filename;
-        this._i = 0;
-        this.start = new Board(this,0,0);
-        this.origin = new OriginPoint(this,0,-g_gap);
-    }
-    filename:string;
-    _i:number;
-    start:Board;
-    origin:StoryObj;
-
-    panX = 0;
-    panY = 0;
-
-    loadedObjs:StoryObj[] = [];
-
-    // 
-
-    isPanning = false;
-    sx = 0;
-    sy = 0;
-    lx = 0;
-    ly = 0;
-    hoverBoard:Board;
-    selBoards:Board[] = [];
-    dragBoards:Board[] = [];
-
-    // 
-
-    init(){
-        this.start.load();
-        this.origin.load();
-        this.makeConnection(this.origin,this.start,ConnectionType.start);
-
-        // let res = this.start.addChoice("Choice 1","Choice 2","Choice 3","Choice 4");
-        // for(const c of res){
-        //     c.addChoice("Another Choice 1","Another Choice 2","Another Choice 2","Another Choice 2");
-        // }
-        let res = this.start.addChoice(["Choice 1","Choice 2"]);
-        res[0].x -= g_gap/2;
-        res[1].x += g_gap/2;
-        for(const c of res){
-            c.addChoice(["Another Choice 1","Another Choice 2"]);
-            c.update();
-        }
-
-        // let newB = new Board(this,0,300,"Test 2");
-        // newB.load();
-        // this.makePath(this.start,newB,new StoryButton("Text",null));
-    }
-    setPan(px:number,py:number){
-        this.panX = px;
-        this.panY = py;
-        grid2.style.backgroundPositionX = (-px)+"px";
-        grid2.style.backgroundPositionY = (-py)+"px";
-
-        grid.style.left = (-px)+"px";
-        grid.style.top = (-py)+"px";
-
-        // this.updateAllBoards();
-    }
-
-    updateAllBoards(){
-        for(const b of this.loadedObjs){
-            b.update();
-        }
-    }
-    addObj(o:StoryObj){
-        if(!this.loadedObjs.includes(o)){
-            this.loadedObjs.push(o);
-            grid.appendChild(o.div);
-        }
-    }
-
-    getRootPos(){
-        // let x = innerWidth/2 - this.panX;
-        // let y = innerHeight/2-72 - this.panY;
-        let x = innerWidth/2;
-        let y = innerHeight/2-72;
-        return {x,y};
-    }
-
-    makeConnection(from:StoryObj,to:StoryObj,type=ConnectionType.path){
-        let c = new Connection(this,0,0,from,to,type);
-        from.connections.push(c);
-        to.connections.push(c);
-        c.load();
-    }
-    makePath(from:Board,to:Board,ref:StoryButton){
-        let c = new PathConnection(this,from,to,ref);
-        from.connections.push(c);
-        to.connections.push(c);
-        c.load();
-    }
-
-    selectBoard(o:Board){
-        if(keys.shift){
-            if(this.selBoards.includes(o)) this.selectRemoveBoard(o);
-            else this.selectAddBoard(o);
-            return;
-        }
-        if(this.selBoards.includes(o)) return;
-        
-        this.deselectBoards();
-        this.selBoards = [o];
-        o.select();
-    }
-    selectAddBoard(o:Board){
-        this.selBoards.push(o);
-        o.select();
-        if(this.selBoards.length > 1) closeAllPanes();
-    }
-    selectRemoveBoard(o:Board){
-        this.selBoards.splice(this.selBoards.indexOf(o),1);
-        o.deselect();
-        if(this.selBoards.length == 1) this.selBoards[0].select();
-        else if(this.selBoards.length == 0) closeAllPanes();
-    }
-    deselectBoards(){
-        for(const c of this.selBoards){
-            c.deselect();
-        }
-        this.selBoards = [];
-    }
-
-    // File Management
-    getSaveObj(){
-        let o = {
-            filename:this.filename,
-            _i:this._i,
-            panX:this.panX,
-            panY:this.panY,
-            boards:this.loadedObjs.map(v=>v.save()).filter(v=>v!=null)
-        };
-        return o;
-    }
-    save(){
-        let o = this.getSaveObj();
-        let str = JSON.stringify(o);
-        localStorage.setItem("__SELS-tmp",str);
-    }
-    static load(){
-        let str = localStorage.getItem("__SELS-tmp");
-        if(!str) return;
-        let o = JSON.parse(str);
-        if(!o) return;
-        
-        let s = new Story(o.filename);
-        s._i = 0;
-        s.setPan(o.panX,o.panY);
-        let o1 = o.boards[0];
-        let root = new Board(s,o1.x,o1.y,o1.title,o1.text,o1.tags);
-        root._id = o1._id;
-        s.start = root;
-        root.load();
-        
-        let list:Board[] = [root];
-        for(let i = 1; i < o.boards.length; i++){
-            let b = o.boards[i];
-            let b1 = new Board(s,b.x,b.y,b.title,b.text,b.tags);
-            b1._id = b._id;
-            list.push(b1);
-        }
-        for(let i = 0; i < o.boards.length; i++){
-            let b = o.boards[i];
-            let b1 = list[i];
-            b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list[v.id]));
-            // if(i == 0) s.start.load();
-            // for(const btn of b.btns){
-                // let btn2 = new StoryButton(btn.l,list.find(v=>v._id == btn.id),b1);
-                // b1.buttons.push(btn2);
-                // b1.addChoice()
-            // }
-            // b1.load();
-        }
-
-        s._i = o._i;
-
-        return s;
-    }
-}
-class StoryObj{
-    constructor(title:string,story:Story,x:number,y:number){
-        this.title = title;
-        this.story = story;
-        this.x = x;
-        this.y = y;
-    }
-    title:string;
-    story:Story;
-    x:number;
-    y:number;
-    div:HTMLElement;
-    load(){}
-
-    top = 0;
-    bottom = 0;
-
-    update(){
-        let d = this.div;
-        let {x,y} = this.story.getRootPos();
-        x += this.x;
-        y += this.y;
-        d.style.left = x+"px";
-        d.style.top = y+"px";
-
-        for(const c of this.connections){
-            c.update();
-        }
-    }
-
-    connections:Connection[] = [];
-    addConnection(c:Connection){
-        
-    }
-    removeConnection(c:Connection){
-        if(!this.connections.includes(c)) return;
-    }
-
-    write(){
-        this.update();
-    }
-
-    select(){
-        this.div.classList.add("sel");
-    }
-    deselect(){
-        this.div.classList.remove("sel");
-    }
-
-    save():any{return null}
-}
-class Connection extends StoryObj{
-    constructor(story:Story,x:number,y:number,from:StoryObj,to:StoryObj,type:ConnectionType){
-        super("",story,x,y);
-        this.from = from;
-        this.to = to;
-        this.type = type;
-    }
-    from:StoryObj;
-    to:StoryObj;
-    type:ConnectionType;
-    beam:HTMLElement;
-    joint:HTMLElement;
-    load(): void {
-        let div = document.createElement("div");
-        div.className = "connect";
-        div.innerHTML = `
-            <div class="beam"></div>
-            <div class="joint"></div>
-        `;
-        grid.appendChild(div);
-        this.div = div;
-        this.beam = div.querySelector(".beam");
-        this.joint = div.querySelector(".joint");
-
-        let data = connectionData[this.type];
-        div.style.setProperty("--col",data.col);
-
-        this.update();
-    }
-    update(): void {
-        let d = this.div;
-        let {x,y} = this.story.getRootPos();
-
-        let dx = this.to.x-this.from.x;
-        let dy = this.to.y-this.to.top-(this.from.y+this.from.bottom);
-        let cx = (this.from.x+this.to.x)/2;
-        let cy = (this.from.y+this.from.bottom+(this.to.y-this.to.top))/2;
-        x += cx;
-        y += cy;
-
-        let ang = Math.atan2(dy,dx);
-        let dist = Math.sqrt(dx**2+dy**2);
-        this.beam.style.rotate = ang+"rad";
-        this.beam.style.width = dist+"px";
-
-        d.style.left = x+"px";
-        d.style.top = y+"px";
-    }
-}
-class PathConnection extends Connection{
-    constructor(story:Story,from:Board,to:Board,ref:StoryButton){
-        super(story,0,0,from,to,ConnectionType.path);
-        this.ref = ref;
-    }
-    declare from:Board;
-    declare to:Board;
-    ref:StoryButton;
-    choice:HTMLElement;
-    load(): void {
-        super.load();
-        this.div.removeChild(this.joint);
-        let textDiv = document.createElement("div");
-        textDiv.className = "choice";
-        textDiv.textContent = this.ref.label;
-        this.div.appendChild(textDiv);
-        this.choice = textDiv;
-    }
-}
-class OriginPoint extends StoryObj{
-    constructor(story:Story,x:number,y:number){
-        super("Origin/Start",story,x,y);
-    }
-    load(): void {
-        let div = document.createElement("div");
-        div.className = "origin";
-        this.div = div;
-        this.story.addObj(this);
-        this.update();
-    }
-}
-class Board extends StoryObj{
-    constructor(story:Story,x:number,y:number,title?:string,text?:string,tags?:string[]){
-        super(title || "New Board "+(story._i+1),story,x,y);
-        this.text = text || "Here is some default text.";
-        this._id = story._i++;
-        this.tags = tags || [];
-        if(tags == null || tags?.length == 0) this.tags.push(this.title.toLowerCase().replaceAll(" ","_"));
-
-        // this.top = 50;
-        // this.bottom = 50; // enable these if you want the top and bottom of the boards to be the connecting points
-    }
-    text:string;
-    buttons:StoryButton[] = [];
-    tags:string[];
-
-    _id:number;
-
-    l_title:HTMLElement;
-    l_tag:HTMLElement;
-
-    load(){
-        if(this.div) grid.removeChild(this.div);
-        
-        let div = document.createElement("div");
-        div.className = "board";
-        div.innerHTML = `
-            <div class="title">${this.title}</div>
-            <div class="tag">${this.tags.join(", ")}</div>
-        `;
-        this.div = div;
-
-        div.addEventListener("mouseenter",e=>{
-            this.story.hoverBoard = this;
-        });
-        div.addEventListener("mouseleave",e=>{
-            this.story.hoverBoard = null;
-        });
-        div.addEventListener("mousedown",e=>{
-            this.story.selectBoard(this);
-        });
-
-        this.story.addObj(this);
-        this.l_title = div.querySelector(".title");
-        this.l_tag = div.querySelector(".tag");
-        
-        this.update();
-    }
-
-    update(): void {
-        super.update();
-
-        this.l_title.textContent = this.title;
-        this.l_tag.textContent = this.tags.join(", ");
-
-        if(false){ // collision
-            let x = this.x;
-            let y = this.y;
-
-            let w = 100;
-            let h = 100;
-            for(const c of this.story.loadedObjs){
-                if(c == this) continue;
-                if(x+w < c.x) continue;
-                if(x > c.x+w) continue;
-                if(y+h < c.y) continue;
-                if(y > c.y+h) continue;
-                
-                this.y += g_gap;
-                this.update();
-                // setTimeout(()=>this.update(),2000);
-                return;
-            }
-        }
-    }
-
-    addChoice(labels:string[],custom?:Board[]){
-        let i = 0;
-        let w = (labels.length-1)*g_gap;
-        let list:Board[] = [];
-        for(const l of labels){
-            let b:Board;
-            let btn:StoryButton;
-            if(!custom){
-                b = new Board(this.story,this.x-w/2+i*g_gap,this.y+g_gap);
-            }
-            else{
-                b = custom[i];
-            }
-            list.push(b);
-            btn = new StoryButton(l,b,this);
-            this.buttons.push(btn);
-            b.load();
-
-            this.story.makePath(this,b,btn);
-            i++;
-        }
-        return list;
-    }
-
-    write(): void {
-        super.write();
-        this.story.save();
-    }
-
-    select(): void {
-        super.select();
-        loadEditBoard(this);
-    }
-
-    save() {
-        let o = {
-            title:this.title,
-            x:this.x,
-            y:this.y,
-            _id:this._id,
-            text:this.text,
-            tags:this.tags,
-            btns:this.buttons.map(v=>{
-                let o2 = {
-                    l:v.label,
-                    id:v.board._id
-                };
-                return o2;
-            })
-        };
-        return o;
-    }
-}
-class StoryButton{
-    constructor(label:string,board:Board,par:Board){
-        this.label = label;
-        this.board = board;
-        this.par = par;
-    }
-    label:string;
-    board:Board;
-    par:Board;
 }
 
 function getM(e:MouseEvent){
@@ -552,11 +145,16 @@ document.addEventListener("mousemove",e=>{
         story.setPan(story.panX-dx,story.panY-dy);
     }
     else if(story.dragBoards.length){
+        let done:Board[] = [];
         for(const b of story.dragBoards){
             function loop(board:Board,once=false){
+                if(done.includes(board)) return;
+                
                 board.x += dx;
                 board.y += dy;
                 board.update();
+
+                done.push(board);
 
                 if(once) return;
                 
@@ -578,6 +176,31 @@ document.addEventListener("mousedown",e=>{
     story.lx = x;
     story.ly = y;
     if(story.hoverBoard){
+        if(e.ctrlKey) if(story.selBoards.length >= 1){
+            let children = [...story.selBoards].concat(story.hoverBoard);
+            let par = children.splice(0,1)[0];
+            let ind = children.indexOf(par);
+            if(ind != -1) children.splice(ind,1);
+            
+            let list:string[] = [];// = children.map(v=>prompt("What should the choice text be to go to: "+v.title+"?"));
+            let cancel = false;
+            for(const v of children){
+                let choice = prompt("What should the choice text be to go to: "+v.title+"?");
+                if(!choice){
+                    cancel = true;
+                    break;
+                }
+                list.push(choice);
+            }
+            if(cancel) return;
+            par.addChoice(list,children);
+
+            story.save();
+            story.deselectBoards();
+            children.forEach(v=>story.selectAddBoard(v));
+            return;
+        }
+        
         if(story.selBoards.length) story.dragBoards = [...story.selBoards];
         else story.dragBoards = [story.hoverBoard];
         // story.selectBoard(story.hoverBoard);
@@ -596,15 +219,68 @@ document.addEventListener("mouseup",e=>{
     story.dragBoards = [];
 });
 
-let keys:Record<string,boolean> = {};
 document.addEventListener("keydown",e=>{
     let k = e.key.toLowerCase();
     keys[k] = true;
+    let active = document.activeElement?.tagName.toLowerCase();
+    if(active == "input" || active == "textarea") return;
+    if(k == "backspace" || k == "delete") if(confirm("Are you sure you want to delete board(s): "+(story.selBoards.map(v=>v.title).join(", "))+"?")){
+        let list = [...story.selBoards];
+        for(const b of list){
+            story.deleteBoard(b);
+        }
+        if(list.length) story.save();
+    }
 });
 document.addEventListener("keyup",e=>{
     let k = e.key.toLowerCase();
     keys[k] = false;
 });
+let _lw = -1;
+let _lh = -1;
+if(false) document.addEventListener("wheel",e=>{
+    let v = (e.deltaY > 0 ? -1 : 1) / 10;
+    if(_lw == -1){
+        let r = grid.getBoundingClientRect();
+        _lw = r.width;
+        _lh = r.height;
+    }
+    story.setZoom(story.zoom+v);
+    let r = grid.getBoundingClientRect();
+    let dw = r.width-_lw;
+    _lw = r.width;
+    let dh = r.height-_lh;
+    _lh = r.height;
+
+    let {x,y} = story.getRootPos();
+    x -= story.panX;
+    y -= story.panY;
+    let ratX = (e.clientX-x)/r.width;
+    let ratY = (e.clientY-y-story.origin.y*story.zoom)/innerHeight;
+    story.panX += ratX/dw;
+    story.panX += ratY/dh;
+    story.setPan(story.panX,story.panY);
+});
+
+class Hist{ // to do at a later time
+    constructor(){
+
+    }
+    list:HistState[];
+    i = 0;
+    undo(){
+
+    }
+    redo(){
+        
+    }
+}
+class HistState{
+    constructor(label:string){
+        this.label = label;
+    }
+    label:string;
+}
 
 let story:Story;
 if(localStorage.getItem("__SELS-tmp")){
@@ -616,3 +292,16 @@ else{
     story = new Story("TestFile1");
     story.init();
 }
+
+function resetFile(){
+    localStorage.removeItem("__SELS-tmp");
+    location.reload();
+}
+
+// Auto Save Interval
+setInterval(()=>{
+    if(story.needsSave){
+        story._save();
+        story.needsSave = false;
+    }
+},3000);

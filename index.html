@@ -8,24 +8,53 @@
 </head>
 <body>
     <div class="menus"></div>
-    <header></header>
+    <header>
+        <div class="h-settings">
+            <button class="b-save">Manual Save</button>
+            <button class="b-export">Export</button>
+            <button class="b-import">Import</button>
+            <button class="b-reset">Reset File</button>
+        </div>
+        <div class="h-play">
+            <button class="b-resume-play">Resume Play</button>
+            <button class="b-play">Play From Start</button>
+        </div>
+    </header>
     <div class="pane edit-board">
         <div class="head">
             <h2>Edit Board</h2>
             <div class="close">X</div>
         </div>
         <hr>
-        <div class="block">
-            <p>Title</p>
-            <input type="text" class="i-title">
-        </div>
-        <div class="block">
-            <p>Text</p>
-            <textarea class="ta-text" name="" id="" cols="30" rows="10"></textarea>
-        </div>
-        <div class="block">
-            <p>Choices</p>
-            <textarea class="ta-choices" name="" id="" cols="30" rows="10"></textarea>
+        <div class="body">
+            <div class="block">
+                <p>Title</p>
+                <input type="text" class="i-title">
+            </div>
+            <div class="block">
+                <p>Text</p>
+                <textarea class="ta-text" name="" id="" cols="30" rows="10"></textarea>
+            </div>
+            <div class="block">
+                <p>Choices</p>
+                <div class="choice-list">
+                    <div class="add-choice">
+                        <input type="text" class="i-add-choice">
+                        <button class="b-add-choice">+</button>
+                    </div>
+                </div>
+                <div class="note">
+                    <p>" - " Removes the link between boards (doesn't delete the board).</p>
+                    <p>" + " Adds a new board and connects it to the current one.</p>
+                    <p>You can add multiple choices at one time by separating them by commas:<br>Choice 1, Choice 2</p>
+                </div>
+                <!-- <textarea class="ta-choices" name="" id="" cols="30" rows="10"></textarea> -->
+            </div>
+            <hr>
+            <div class="block">
+                <p>Play</p>
+                <button class="b-play-from-here">Play From Here</button>
+            </div>
         </div>
     </div>
     <div class="pane edit-choice"></div>
@@ -41,6 +70,7 @@
         <div class="grid2"></div>
         <div class="grid"></div>
     </div>
+    <script src="out/core.js"></script>
     <script src="out/main.js"></script>
 </body>
 </html>
