@@ -219,11 +219,9 @@ class Story{
             return;
         }
 
-        if(!story.handle) await openDir();
-         
-
-        console.log("saved (new folder system)");
-        return;
+        // if(!story.handle) await openDir();
+        // console.log("saved (new folder system)");
+        // return;
 
         let o = this.getSaveObj();
         let str = JSON.stringify(o);

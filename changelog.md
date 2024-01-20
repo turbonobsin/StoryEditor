@@ -10,4 +10,4 @@
 
 ### 1/19/23
 - theme system with button toggle in header
-- 
+- start of server setup
