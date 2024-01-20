@@ -1,6 +1,22 @@
 :root{
     filter:invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8);
 }
+.b-theme{
+    display:inline-flex;
+    justify-content:center;
+    align-items:center;
+    margin-left:5px;
+}
+.b-theme > img{
+    width:20px;
+    height:20px;
+}
+
+.h-settings{
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
 
 body{
     margin:0px;

@@ -1,3 +1,31 @@
+let b_theme = document.querySelector(".b-theme") as HTMLButtonElement;
+let themeImg = b_theme.querySelector("img");
+let theme = localStorage.getItem("__SE-theme") || "light";
+function setTheme(val:string){
+    let html = document.body.parentElement;
+    html.style.filter = (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none");
+    localStorage.setItem("__SE-theme",val);
+    themeImg.src = (val == "dark" ? "assets/dark_mode.svg" : "assets/light_mode.svg");
+}
+setTheme(theme);
+b_theme.addEventListener("click",e=>{
+    if(theme == "dark") theme = "light";
+    else theme = "dark";
+    setTheme(theme);
+});
+
+// testFileSize();
+let b_open = document.querySelector(".b-open") as HTMLButtonElement;
+async function openDir(){
+    story.handle = await showDirectoryPicker({
+        mode:"readwrite",
+        id:"openDir"
+    });
+}
+b_open.addEventListener("click",e=>{
+    openDir();
+});
+
 let panes = document.querySelectorAll<HTMLElement>(".pane");
 let pane_editBoard = document.querySelector(".edit-board") as HTMLElement;
 let pane_editChoice = document.querySelector(".edit-choice") as HTMLElement;
@@ -184,11 +212,19 @@ class Story{
     save(){
         this.needsSave = true;
     }
-    _save(){
+    handle:FileSystemDirectoryHandle;
+    async _save(){
         if(!grid){
             console.warn("Warn! prevented trying to change story while playing it!");
             return;
         }
+
+        if(!story.handle) await openDir();
+         
+
+        console.log("saved (new folder system)");
+        return;
+
         let o = this.getSaveObj();
         let str = JSON.stringify(o);
         localStorage.setItem("__SELS-tmp",str);

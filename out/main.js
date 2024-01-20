@@ -47,7 +47,7 @@ b_reset.addEventListener("click", e => {
     resetFile();
 });
 function setPlayI(i) {
-    let str = localStorage.getItem("__SE-PD") || "{locId:0}";
+    let str = localStorage.getItem("__SE-PD") || '{"locId":0}';
     let o = JSON.parse(str);
     o.locId = i;
     localStorage.setItem("__SE-PD", JSON.stringify(o));
