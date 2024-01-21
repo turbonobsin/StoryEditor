@@ -1,5 +1,12 @@
+/* @import url(https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0); */
+@import url(https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined);
+@import url(https://fonts.googleapis.com/icon?family=Material+Icons);
+
 :root{
-    filter:invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8);
+    --theme-filter:invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8);
+    /* --img-filter:invert(1) hue-rotate(180deg) brightness(1) contrast(1); */
+    --my-col:hsl(229deg,100%,40%);
+    filter:var(--theme-filter);
 }
 .b-theme{
     display:inline-flex;
@@ -70,6 +77,15 @@ header > div{
     position:relative;
     background-color:white;
 }
+.toolbar > :nth-child(1){
+    width:calc(50% - 100px);
+}
+.toolbar > :nth-child(2){
+    width:200px;
+}
+.toolbar > :nth-child(3){
+    width:calc(50% - 100px);
+}
 input[type="text"]{
     padding:5px;
 }
@@ -83,6 +99,8 @@ button{
 }
 
 .board{
+    font-family:monospace;
+    border-radius:5px;
     width:100px;
     height:100px;
     font-size:14px;
@@ -224,6 +242,10 @@ button{
     justify-content:center;
     align-items:center;
     font-size:15px;
+    border-radius:5px;
+}
+.pane .close:hover{
+    background-color:darkgray;
 }
 .pane h2{
     margin-top:5px;
@@ -247,8 +269,8 @@ button{
 }
 
 .sel{
-    border:dotted 3px dodgerblue;
-    border-radius:5px;
+    border:solid 3px var(--my-col) !important;
+    /* border-radius:5px; */
 }
 
 .choice-list{
@@ -297,4 +319,152 @@ button{
     margin:15px 0px;
     font-weight:normal;
     font-size:15px;
+}
+
+.pane.edit-choice{
+    display:none;
+}
+
+.cursors{
+    position:absolute;
+}
+.mouse-cursor{
+    position:absolute;
+    width:30px;
+    height:30px;
+    z-index:2;
+    --col:white;
+    color:var(--col);
+    pointer-events:none;
+    /* text-shadow:0px 3px 0px white; */
+}
+.mouse-cursor > div:first-child{
+    position:absolute;
+    font-weight:bold;
+    font-family:monospace;
+    /* top:5px; */
+    top:2px;
+    left:30px;
+    width:100px;
+    height:14px;
+    font-size:14px;
+    background-color:var(--col);
+    color:white;
+    width:max-content;
+    /* color:var(--col); */
+    padding:3px;
+
+    padding:3px 12px;
+    border-radius:10rem;
+    display:flex;
+    align-items:center;
+}
+.visitor-list{
+    position:absolute;
+    height:20px;
+    width:100%;
+    top:-25px;
+    left:0px;
+    display:flex;
+    flex-direction:row-reverse;
+    align-items:center;
+    gap:3px;
+}
+.vld{
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    background-color:var(--col,black);
+    position:relative;
+    cursor:default;
+    flex-shrink:0;
+}
+.vld.star::after{
+    content:"star";
+    /* font-family:"Material Symbols Outlined"; */
+    font-family:"Material Icons";
+    position:absolute;
+    top:50%;
+    left:50%;
+    color:white;
+    transform:translate(-50%,-50%);
+}
+.vld:hover .vl-name{
+    opacity:1;
+}
+.vl-name{
+    display:flex;
+    font-family:monospace;
+    font-weight:bold;
+    position:absolute;
+    top:-30px;
+    border-radius:10rem;
+    padding:3px 15px;
+    align-items:center;
+    left:0px;
+    height:20px;
+    width:max-content;
+    background-color:var(--col);
+    color:white;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.1s ease-out;
+}
+.global-visitors{
+    padding-right:25px;
+    flex-direction:row-reverse;
+    display:flex;
+    align-items:center;
+    gap:3px;
+}
+.global-visitors > div .vl-name{
+    top:unset;
+    bottom:-40px;
+    left:unset;
+    right:0px;
+}
+@keyframes AddVBubble {
+    0%{
+        opacity:0;
+        scale:1;
+    }
+    70%{
+        scale:1.15;
+    }
+    100%{
+        opacity:1;
+        scale:1;
+    }
+}
+
+/* Image Menu */
+.image-menu{
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    min-width:500px;
+    min-height:500px;
+    border:solid 1px gray;
+    border-radius:5px;
+}
+.drag-zone{
+    height:200px;
+    width:100%;
+    background-color:gainsboro;
+    border-radius:3px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:10px;
+    font-size:14px;
+}
+.your-images{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+.your-images img{
+    filter:var(--img-filter);
+    height:60px;
 }

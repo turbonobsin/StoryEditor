@@ -1,13 +1,17 @@
-### 1/17/23
+### 1/17/24
 - initial creation
 - crazy amount of stuff
 
-### 1/18/23
+### 1/18/24
 - also massive update
 - so many bug fixes
 - play mode
 - flow arrows
 
-### 1/19/23
+### 1/19/24
 - theme system with button toggle in header
 - start of server setup
+
+### 1/20/24
+- fixed dates to be 2024 xD
+- 

@@ -58,7 +58,9 @@ b_addChoice.addEventListener("click",e=>{
     let name = i_addChoice.value;
     if(!name) return;
 
-    let res = sel.addChoice(name.split(","));
+    let list = name.split(",");
+    let res = sel.addChoice(list);
+    socket.emit("s_addChoice",sel._id,list);
     story.save();
     i_addChoice.value = "";
     // loadEditBoard(sel);
@@ -81,6 +83,8 @@ function simplifyText(t:string){
     return t.toLowerCase().replaceAll(" ","");
 }
 i_searchAll.addEventListener("input",e=>{
+    if(!story) return;
+    
     let v = simplifyText(i_searchAll.value);
     for(const b of story.loadedObjs){
         let a = simplifyText(b.title);
@@ -111,7 +115,7 @@ function initPane(c:HTMLElement){
 }
 function closePane(c:HTMLElement){
     c.classList.remove("open");
-    console.log("CLSOE");
+    if(c == pane_editBoard) _editBoard_b = null;
 }
 function closeAllPanes(){
     for(const c of panes){
@@ -135,6 +139,8 @@ function getM(e:MouseEvent){
 }
 
 document.addEventListener("mousemove",e=>{
+    if(!story) return;
+    
     let {x,y} = getM(e);
     let dx = x-story.lx;
     let dy = y-story.ly;
@@ -145,28 +151,14 @@ document.addEventListener("mousemove",e=>{
         story.setPan(story.panX-dx,story.panY-dy);
     }
     else if(story.dragBoards.length){
-        let done:Board[] = [];
-        for(const b of story.dragBoards){
-            function loop(board:Board,once=false){
-                if(done.includes(board)) return;
-                
-                board.x += dx;
-                board.y += dy;
-                board.update();
-
-                done.push(board);
-
-                if(once) return;
-                
-                for(const c of board.buttons){
-                    loop(c.board);
-                }
-            }
-            loop(b,keys.alt);
-        }
+        story.moveBoards(story.dragBoards,dx,dy);
     }
 });
+let mouseDown = [false,false,false];
 document.addEventListener("mousedown",e=>{
+    mouseDown[e.button] = true;
+    if(!story) return;
+    
     if(e.clientY <= 72) return;
     i_searchAll.value = "";
     
@@ -194,6 +186,7 @@ document.addEventListener("mousedown",e=>{
             }
             if(cancel) return;
             par.addChoice(list,children);
+            socket.emit("s_addChoice",par._id,list);
 
             story.save();
             story.deselectBoards();
@@ -210,6 +203,9 @@ document.addEventListener("mousedown",e=>{
     }
 });
 document.addEventListener("mouseup",e=>{
+    mouseDown[e.button] = false;
+    if(!story) return;
+    
     if(!story.hoverBoard) if(!overPane) if(story.sx == story.lx && story.sy == story.ly){
         story.deselectBoards();
         closeAllPanes();
@@ -283,15 +279,18 @@ class HistState{
 }
 
 let story:Story;
-if(localStorage.getItem("__SELS-tmp")){
-    story = Story.load();
-    story.origin.load();
-    story.makeConnection(story.origin,story.start,ConnectionType.start);
+if(false){
+    if(localStorage.getItem("__SELS-tmp")){
+        story = Story.load();
+        story.origin.load();
+        story.makeConnection(story.origin,story.start,ConnectionType.start);
+    }
+    else{
+        story = new Story("TestFile1");
+        story.init();
+    }
 }
-else{
-    story = new Story("TestFile1");
-    story.init();
-}
+initNetworkFromEditor();
 
 function resetFile(){
     localStorage.removeItem("__SELS-tmp");
@@ -300,6 +299,7 @@ function resetFile(){
 
 // Auto Save Interval
 setInterval(()=>{
+    if(!story) return;
     if(story.needsSave){
         story._save();
         story.needsSave = false;

@@ -40,14 +40,6 @@ let allBoards:Board[] = [];
 let passage = document.querySelector(".passage");
 // let buttons = document.querySelector(".buttons");
 
-function wait(delay:number){
-    return new Promise<void>(resolve=>{
-        setTimeout(()=>{
-            resolve();
-        },delay);
-    });
-}
-
 function madeChoice(btn:StoryButton,button:HTMLButtonElement){
     let p_btns = document.querySelectorAll(".p-btn");
     for(const c of p_btns){

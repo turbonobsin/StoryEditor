@@ -1,9 +1,19 @@
+function wait(delay:number){
+    return new Promise<void>(resolve=>{
+        setTimeout(()=>{
+            resolve();
+        },delay);
+    });
+}
+
 let b_theme = document.querySelector(".b-theme") as HTMLButtonElement;
 let themeImg = b_theme.querySelector("img");
 let theme = localStorage.getItem("__SE-theme") || "light";
 function setTheme(val:string){
     let html = document.body.parentElement;
-    html.style.filter = (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none");
+    // html.style.filter = (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none");
+    html.style.setProperty("--theme-filter",(val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none"));
+    html.style.setProperty("--img-filter",(val == "dark" ? "invert(1) hue-rotate(180deg) brightness(1) contrast(1)" : "none"));
     localStorage.setItem("__SE-theme",val);
     themeImg.src = (val == "dark" ? "assets/dark_mode.svg" : "assets/light_mode.svg");
 }
@@ -34,6 +44,10 @@ let grid = document.querySelector(".grid") as HTMLElement;
 let grid2 = document.querySelector(".grid2") as HTMLElement;
 let keys:Record<string,boolean> = {};
 
+function santitizeEmail(email:string){
+    return email.replaceAll("@","").replaceAll(".","");
+}
+
 enum ConnectionType{
     start,
     path
@@ -48,6 +62,13 @@ let connectionData = [
         filter:"contrast(0)"
     }
 ];
+type SaveObj = {
+    filename:string,
+    _i:number,
+    panX:number,
+    panY:number,
+    boards:any
+};
 class Story{
     constructor(filename:string){
         this.filename = filename;
@@ -63,6 +84,7 @@ class Story{
     panX = 0;
     panY = 0;
 
+    allBoards:Board[] = [];
     loadedObjs:StoryObj[] = [];
 
     // 
@@ -78,6 +100,8 @@ class Story{
     dragBoards:Board[] = [];
 
     needsSave = false;
+
+    userData:any;
 
     // 
 
@@ -131,19 +155,27 @@ class Story{
     addObj(o:StoryObj){
         if(!this.loadedObjs.includes(o)){
             this.loadedObjs.push(o);
+            if(o instanceof Board) this.allBoards.push(o);
             if(grid) grid.appendChild(o.div);
         }
     }
-    deleteBoard(b:Board){
+    deleteBoard(b:Board,isOther=false){
         let list = [...b.connections];
         for(const c of list){
             c.remove();
         }
         b.div.parentElement.removeChild(b.div);
         this.loadedObjs.splice(this.loadedObjs.indexOf(b),1);
-        if(this.selBoards.includes(b)) this.deselectBoards();
-        this.hoverBoard = null;
-        closePane(pane_editBoard);
+        if(!isOther){
+            if(this.selBoards.includes(b)) this.deselectBoards();
+            this.hoverBoard = null;
+            closePane(pane_editBoard);
+            socket.emit("s_deleteBoard",b._id);
+        }
+        else{
+            this.selectRemoveBoard(b);
+        }
+        this.allBoards.splice(this.allBoards.indexOf(b),1);
     }
 
     getRootPos(){
@@ -198,8 +230,76 @@ class Story{
         this.selBoards = [];
     }
 
+    getBoard(id:number){
+        return this.allBoards.find(v=>v._id == id);
+    }
+    otherSelectBoard(email:string,id:number){
+        let b = this.getBoard(id);
+        if(!b) return;
+        let u = cursorList.find((v:any)=>v.email == email);
+        if(!b.visitors.some(v=>v.email == email)){
+            b.visitors.push(u);
+            b.updateVisitors();
+        }
+        // b.div.style.border = "solid 3px "+u.col;
+        // let div = document.createElement("div");
+        // div.innerHTML = `
+        //     <div class="vl-name></div>
+        // `;
+        // div.style.setProperty("--col",u.col);
+        // div.className = "vld-"+santitizeEmail(email); // visitor list div
+        // b.visitorList.appendChild(div);
+    }
+    otherDeselectBoard(email:string,id:number){
+        let b = this.getBoard(id);
+        if(!b) return;
+        if(b.visitors.some(v=>v.email == email)){
+            b.visitors.splice(b.visitors.findIndex(v=>v.email == email),1);
+            b.updateVisitors();
+        }
+        // b.div.style.border = null;
+        // let div = b.visitorList.querySelector(".vld-"+santitizeEmail(email));
+        // if(div) b.visitorList.removeChild(div);
+    }
+    moveBoardTo(email:string,id:number,x:number,y:number){
+        let b = this.getBoard(id);
+        if(!b) return;
+        b.x = x;
+        b.y = y;
+        b.update();
+    }
+    moveBoards(list:Board[],dx:number,dy:number){
+        let done:Board[] = [];
+        for(const b of list){
+            function loop(board:Board,once=false){
+                if(done.includes(board)) return;
+                
+                board.x += dx;
+                board.y += dy;
+                board.update();
+                socket.emit("s_moveBoardTo",board._id,board.x,board.y);
+
+                done.push(board);
+
+                if(once) return;
+                
+                for(const c of board.buttons){
+                    loop(c.board);
+                }
+            }
+            loop(b,keys.alt);
+        }
+        // socket.emit("s_moveBoardsTo",list.map(v=>{
+        //     return {
+        //         id:v._id,
+        //         x:v.x,
+        //         y:v.y
+        //     };
+        // }));
+    }
+
     // File Management
-    getSaveObj(){
+    getSaveObj():SaveObj{
         let o = {
             filename:this.filename,
             _i:this._i,
@@ -214,6 +314,9 @@ class Story{
     }
     handle:FileSystemDirectoryHandle;
     async _save(){
+        socket.emit("s_save");
+        return;
+        
         if(!grid){
             console.warn("Warn! prevented trying to change story while playing it!");
             return;
@@ -228,11 +331,14 @@ class Story{
         localStorage.setItem("__SELS-tmp",str);
         console.log("...saved");
     }
-    static load(){
-        let str = localStorage.getItem("__SELS-tmp");
-        if(!str) return;
-        let o = JSON.parse(str);
-        if(!o) return;
+    static load(o?:any){
+        if(!o){
+            return;
+            let str = localStorage.getItem("__SELS-tmp");
+            if(!str) return;
+            o = JSON.parse(str);
+            if(!o) return;
+        }
         
         let s = new Story(o.filename);
         s._i = 0;
@@ -471,6 +577,8 @@ class Board extends StoryObj{
     l_title:HTMLElement;
     l_tag:HTMLElement;
 
+    visitorList:HTMLElement;
+    visitors:any[] = [];
     load(){
         super.load();
         if(this.div) if(this.div.parentElement) grid.removeChild(this.div);
@@ -479,6 +587,7 @@ class Board extends StoryObj{
         div.className = "board";
         let max = 40;
         div.innerHTML = `
+            <div class="visitor-list"></div>
             <div class="title">${this.title}</div>
             <div class="tag">${this.text.substring(0,max)+(this.text.length>max?"...":"")}</div>
             <!--<div class="tag">${this.tags.join(", ")}</div>-->
@@ -499,6 +608,7 @@ class Board extends StoryObj{
         this.story.addObj(this);
         this.l_title = div.querySelector(".title");
         this.l_tag = div.querySelector(".tag");
+        this.visitorList = div.querySelector(".visitor-list");
         
         if(false){ // collision
             let t = this as Board;
@@ -574,8 +684,16 @@ class Board extends StoryObj{
             c.update();
         }
     }
+    updateVisitors(){
+        this.div.style.border = null;
+        this.visitorList.textContent = "";
+        for(const u of this.visitors){
+            let div = createVisitorDiv(u,this.div);
+            this.visitorList.appendChild(div);
+        }
+    }
 
-    addChoice(labels:string[],custom?:Board[]){
+    addChoice(labels:string[],custom?:Board[],isOther=false){
         let i = 0;
         let w = (labels.length-1)*g_gap;
         let list:Board[] = [];
@@ -599,13 +717,15 @@ class Board extends StoryObj{
             b.load();
 
             btn.path = this.story.makePath(this,b,btn);
-            this.story.selectBoard(b);
-            loadEditBoard(b);
+            if(!isOther){
+                this.story.selectBoard(b);
+                loadEditBoard(b);
+            }
             i++;
         }
         return list;
     }
-    removeChoice(i:number[],deleteBoard=false){
+    removeChoice(i:number[],deleteBoard=false,isOther=false){
         let list = i.map(v=>this.buttons[v]);
         for(const b of list){
             if(!b) continue;
@@ -617,7 +737,7 @@ class Board extends StoryObj{
             if(deleteBoard){
                 story.deleteBoard(b.board);
             }
-            loadEditBoard(this);
+            if(!isOther) loadEditBoard(this);
         }
     }
 
@@ -629,6 +749,21 @@ class Board extends StoryObj{
     select(): void {
         super.select();
         loadEditBoard(this);
+
+        if(myCursor) if(!this.visitors.includes(myCursor)){
+            this.visitors.push(myCursor);
+            this.updateVisitors();
+        }
+        socket.emit("s_selectBoard",this._id);
+    }
+    deselect(): void {
+        super.deselect();
+
+        if(myCursor) if(this.visitors.includes(myCursor)){
+            this.visitors.splice(this.visitors.findIndex(v=>v.email == myCursor.email),1);
+            this.updateVisitors();
+        }
+        socket.emit("s_deselectBoard",this._id);
     }
 
     save() {
@@ -664,12 +799,14 @@ class StoryButton{
     path:PathConnection;
 }
 
+let i_title = pane_editBoard.querySelector(".i-title") as HTMLInputElement;
+let ta_text = pane_editBoard.querySelector(".ta-text") as HTMLTextAreaElement;
+let _editBoard_b:Board;
 function loadEditBoard(b:Board){
     if(!grid) return;
+    _editBoard_b = b;
     pane_editBoard.classList.add("open");
     
-    let i_title = pane_editBoard.querySelector(".i-title") as HTMLInputElement;
-    let ta_text = pane_editBoard.querySelector(".ta-text") as HTMLTextAreaElement;
     // let ta_choices = pane_editBoard.querySelector(".ta-choices") as HTMLTextAreaElement;
 
     i_title.value = b.title;
@@ -694,6 +831,7 @@ function loadEditBoard(b:Board){
             c.label = inp.value;
             c.board.updateConnections();
             story.save();
+            socket.emit("s_renameChoice",b._id,i,c.label);
         });
         inp.addEventListener("mouseenter",e=>{
             c.path.div.classList.add("highlight");
@@ -704,6 +842,7 @@ function loadEditBoard(b:Board){
         let b_remove = div.querySelector(".b-remove-choice") as HTMLButtonElement;
         b_remove.addEventListener("click",function(){
             b.removeChoice([i]);
+            socket.emit("s_removeChoice",b._id,[i],false);
             // b.buttons.splice(b.buttons.indexOf(c),1);
             // choiceList.removeChild(div);
             story.save();
@@ -713,10 +852,12 @@ function loadEditBoard(b:Board){
     i_title.oninput = function(){
         b.title = i_title.value;
         b.write();
+        socket.emit("s_editBoardTitle",b._id,b.title);
     };
     ta_text.oninput = function(){
         b.text = ta_text.value;
         b.write();
+        socket.emit("s_editBoardText",b._id,b.text);
     };
 }
 

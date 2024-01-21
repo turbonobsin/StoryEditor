@@ -37,13 +37,6 @@ let playStory;
 let allBoards = [];
 let passage = document.querySelector(".passage");
 // let buttons = document.querySelector(".buttons");
-function wait(delay) {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve();
-        }, delay);
-    });
-}
 function madeChoice(btn, button) {
     let p_btns = document.querySelectorAll(".p-btn");
     for (const c of p_btns) {
