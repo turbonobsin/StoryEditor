@@ -1,27 +1,12 @@
-let serverURL = "http://localhost:3000";
-const AID = "__SE-"; // app id
-
 const global_visitors = document.querySelector(".global-visitors");
 
-function LSGet(id:string){
-    return localStorage.getItem(AID+id);
-}
-function LSGetSet(id:string,req:()=>string){
-    let v = localStorage.getItem(AID+id);
-    if(v) return v;
-    v = req();
-    localStorage.setItem(AID+id,v);
-    return v;
-}
-function getUsername(){
-    return LSGetSet("name",()=>prompt("Enter your username"));
-}
 let myEmail:string;
 function getEmail(){
     return LSGetSet("email",()=>prompt("Enter your email"));
 }
 
 const cursors = document.querySelector(".cursors");
+// @ts-ignore
 let myCursor:any;
 let cursorList = [];
 function genColChannel(){
@@ -71,7 +56,7 @@ socket.on("connect",()=>{
     // }
     if(hasConnected){
         // alert("The server has restarted, we will refresh your page in a moment to reconnect.");
-        // location.reload();
+        location.reload();
         return;
     }
     hasConnected = true;
@@ -207,11 +192,12 @@ socket.on("renameChoice",(email:string,id:number,i:number,newtext:string)=>{
         loadEditBoard(b);
     }
 });
-socket.on("addChoice",(email:string,id:number,labels:string[])=>{
+socket.on("addChoice",(email:string,id:number,labels:string[],custom?:number[])=>{
     let b = story.getBoard(id);
     if(!b) return;
 
-    b.addChoice(labels,null,true);
+    if(custom) b.addChoice(labels,custom.map(v=>story.allBoards.find(w=>w._id == v)),true);
+    else b.addChoice(labels,null,true);
 });
 socket.on("removeChoice",(email:string,id:number,i:number[],deleteBoard:boolean)=>{
     let b = story.getBoard(id);
@@ -224,6 +210,12 @@ socket.on("deleteBoard",(email:string,id:number)=>{
     if(!b) return;
 
     story.deleteBoard(b,true);
+});
+socket.on("setBGImage",(email:string,id:number,img:string)=>{
+    let b = story.getBoard(id);
+    if(!b) return;
+
+    b.setImg(img,true);
 });
 
 
@@ -242,8 +234,10 @@ class User{
     }
     name:string;
     id:string;
+    curP:string;
 }
 
+let g_user:User;
 async function logUserIn(){
     let user = await new Promise<User>(resolve=>{
         let email:string;
@@ -259,23 +253,56 @@ async function logUserIn(){
             resolve(user);
         });
     });
-    console.log(user);
-    let pdata = await new Promise<any>(resolve=>{
-        socket.emit("openProject","claeb@example.com","tmp",((data:any)=>{
-            resolve(data);
-        }));
-    });
+    g_user = user;
+}
+async function loadProject(email:string,name:string){
+    // let proj = g_user.curP || "tmp";
+    let code = LSGet("code-"+name);
+    let pdata:any;
+    async function promptCode(isFirst=false){
+        if(!isFirst){
+            code = prompt("Please enter project pass code:");
+            if(code == null) return;
+        }
+        pdata = await new Promise<any>(resolve=>{
+            socket.emit("openProject",email,name,code,((data:any)=>{
+                resolve(data);
+            }));
+        });
+        if(!pdata){
+            console.log("could not find pdata");
+            return;
+        }
+        if(pdata.err){
+            if(pdata.code == 0){
+                alert(pdata.err);
+                return;
+            }
+            else if(pdata.code == 1){
+                alert(pdata.err);
+                await promptCode();
+            }
+        }
+    }
+    await promptCode(true);
+
+    localStorage.setItem(AID+"code-"+name,code||"");
     if(!pdata){
-        console.log("could not find pdata");
+        console.warn("could not get pdata");
+        alert("Failed to find/load project");
         return;
     }
+
+    console.warn("OWNER:",pdata.owner);
+    if(!pdata.owner) return;
+    pdata.storyData.owner = pdata.owner;
     story = Story.load(pdata.storyData);
     story.origin.load();
     story.makeConnection(story.origin,story.start,ConnectionType.start);
 
     story.setPan(0,0);
 
-    let email = getEmail();
+    // let email = getEmail();
     // myEmail = email;
     story.deselectBoards();
     closeAllPanes();
@@ -285,7 +312,7 @@ async function logUserIn(){
     story.userData = pdata.userData;
     for(const u of pdata.userData){
         for(const id of u.sel){
-            if(u.email != email) story.otherSelectBoard(u.email,id);
+            if(u.email != myEmail) story.otherSelectBoard(u.email,id);
             else story.selectBoard(story.getBoard(id));
         }
     }
@@ -298,7 +325,22 @@ async function initNetworkFromEditor(){
 const menus = document.querySelector(".menus");
 const b_images = document.querySelector(".b-images") as HTMLButtonElement;
 
-function chooseImage(){
+function closeMenu(div:HTMLElement){
+    if(div.parentElement) div.parentElement.removeChild(div);
+    back.classList.add("hide");
+}
+function closeMenuEV(div:HTMLElement){
+    let close = div.querySelector(".close") as HTMLButtonElement;
+    if(close) close.click();
+}
+
+const back = document.querySelector(".back");
+async function chooseImage(){
+    back.classList.remove("hide");
+    
+    let res:(v:string)=>void;
+    let prom = new Promise<string>(resolve=>res = resolve);
+    
     let menu = document.createElement("div");
     menu.className = "pane image-menu";
     menus.appendChild(menu);
@@ -316,7 +358,25 @@ function chooseImage(){
         </div>
         <p>Your Images</p>
         <div class="your-images"></div>
+        <div class="select-footer">
+            <div class="l-img-name">No image selected.</div>
+            <button class="b-confirm" disabled>Confirm</button>
+        </div>
     `;
+    let sel:string;
+    let l_imgName = menu.querySelector(".l-img-name");
+    let b_confirm = menu.querySelector(".b-confirm") as HTMLButtonElement;
+    b_confirm.addEventListener("click",e=>{
+        res(sel);
+        closeMenu(menu);
+    });
+
+    let close = menu.querySelector(".close") as HTMLButtonElement;
+    close.addEventListener("click",e=>{
+        res(null);
+        closeMenu(menu);
+    });
+    
     let dragZone = menu.querySelector(".drag-zone") as HTMLElement;
     let yi = menu.querySelector(".your-images");
 
@@ -325,6 +385,25 @@ function chooseImage(){
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
     });
+
+    function createImg(name:string,url?:string){
+        let img = document.createElement("img");
+        yi.appendChild(img);
+        if(url) img.src = url;
+
+        img.onclick = function(){
+            sel = name;
+            for(const c of yi.children){
+                c.classList.remove("sel");
+            }
+            img.classList.add("sel");
+            l_imgName.textContent = "Selected: "+name;
+            b_confirm.disabled = false;
+        };
+
+        return img;
+    }
+
     dragZone.addEventListener("drop",async e=>{
         e.stopPropagation();
         e.preventDefault();
@@ -335,6 +414,11 @@ function chooseImage(){
         
         let allowedTypes = ["png","jpg","jpeg","bmp","gif"];
         for(const f of e.dataTransfer.files){
+            if(f.size >= 1e7){
+                alert("The size of the file: "+f.name+" is too large.");
+                continue;
+            }
+            
             let typeList = (f.type.includes("/") ? f.type.split("/") : ["any",f.type]);
             let superType = typeList[0];
             let type = typeList[1];
@@ -347,26 +431,73 @@ function chooseImage(){
                 alert(f.name+": "+"Unsupported file type: "+type+" ! Supported types are: "+allowedTypes.join(", "));
                 continue;
             }
-            
-            await new Promise<void>(resolve=>{
-                const reader = new FileReader();
-                reader.onloadend = function () {
-                    socket.emit("s_addImage",f.name,reader.result,(url:string)=>{
-                        url = serverURL+"/"+url;
-                        let img = document.createElement("img");
-                        img.src = url;
-                        yi.appendChild(img);
-                        resolve();
-                    });
-                };
-                reader.readAsDataURL(f);
+
+            let img = createImg(f.name);
+            socket.emit("s_uploadImage",f.name,f,(url:string)=>{
+                url = serverURL+"/"+url;
+                img.src = url;
             });
-            await wait(2000);
         }
     });
     
     socket.emit("s_getImages",(list:string[])=>{
-        console.log("LIST",list);
+        for(const name of list){
+            createImg(name,serverURL+"/projects/"+story.owner+"/"+story.filename+"/images/"+name);
+        }
+    });
+
+    return prom;
+}
+function openProjectMenu(){
+    back.classList.remove("hide");
+
+    let menu = document.createElement("div");
+    menu.className = "pane open-project-menu";
+    menus.appendChild(menu);
+    menu.innerHTML = `
+        <div class="head">
+            <div>Open Project</div>
+            <div class="close">X</div>
+        </div>
+        <br>
+        <div class="proj-list"></div>
+        <br>
+        <div class="select-footer">
+            <div class="l-proj-name">No project selected.</div>
+            <button class="b-confirm" disabled>Confirm</button>
+        </div>
+    `;
+    let projList = menu.querySelector(".proj-list");
+    
+    let sel:any;
+    let b_confirm = menu.querySelector(".b-confirm") as HTMLButtonElement;
+    b_confirm.addEventListener("click",async e=>{
+        await loadProject(sel.email,sel.pid);
+        closeMenu(menu);
+    });
+
+    let close = menu.querySelector(".close") as HTMLButtonElement;
+    close.addEventListener("click",e=>{
+        closeMenu(menu);
+    });
+
+    socket.emit("getAllProjects",(list:any[])=>{
+        // console.warn("All projects",list);
+        for(const data of list){
+            let d = document.createElement("div");
+            d.innerHTML = `
+                <div>${data.pid}</div>
+                <div>${data.email}</div>
+            `;
+            d.addEventListener("click",e=>{
+                for(const d1 of projList.children){
+                    d1.classList.remove("sel");
+                }
+                d.classList.add("sel");
+                sel = data;
+                b_confirm.disabled = false;
+            });
+            projList.appendChild(d);
+        }
     });
 }
-chooseImage();

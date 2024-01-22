@@ -14,4 +14,18 @@
 
 ### 1/20/24
 - fixed dates to be 2024 xD
-- 
+
+### 1/21/24
+- multiplayer system
+- other stuff probably
+- rediculously massive update
+
+### 1/22/24
+- mostly finished up
+- fixed lots and lots of bugs
+- added multiplayer support for reconnections
+- added image support
+- added play mode online support
+- added create projects
+- added looking through open projects
+- added pass codes to projects

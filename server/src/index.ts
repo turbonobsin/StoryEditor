@@ -2,7 +2,7 @@ import * as http from "http";
 import express, { NextFunction, Request, Response } from "express";
 import {Server, Socket} from "socket.io";
 import fs from "fs";
-import path from "path";
+import cors from "cors";
 
 console.log("started...");
 
@@ -180,7 +180,13 @@ class Story{
     }
     static async load(project:Project){
         let str = await read("projects/"+project.owner+"/"+project.name+"/data.json","utf8");
-        let o = JSON.parse(str);
+        let o:any;
+        try{
+            o = JSON.parse(str);
+        }
+        catch(e){
+            return;
+        }
         
         let s = new Story(project);
         s.project = project;
@@ -188,6 +194,7 @@ class Story{
 
         let o1 = o.boards[0];
         let root = new Board(s,o1.x,o1.y,o1.title,o1.text,o1.tags);
+        root.img = o1.img;
         root._id = o1._id;
         s.start = root;
         root.load();
@@ -196,6 +203,7 @@ class Story{
         for(let i = 1; i < o.boards.length; i++){
             let b = o.boards[i];
             let b1 = new Board(s,b.x,b.y,b.title,b.text,b.tags);
+            b1.img = b.img;
             b1._id = b._id;
             list.push(b1);
         }
@@ -345,6 +353,8 @@ class Board extends StoryObj{
     l_title:HTMLElement;
     l_tag:HTMLElement;
 
+    img:string;
+
     load(){
         super.load();
         this.story.addObj(this);
@@ -419,6 +429,7 @@ class Board extends StoryObj{
             _id:this._id,
             text:this.text,
             tags:this.tags,
+            img:this.img,
             btns:this.buttons.map(v=>{
                 let o2 = {
                     l:v.label,
@@ -447,6 +458,19 @@ class StoryButton{
 ////////////////////////////////////////
 
 const app = express();
+app.use(cors({
+//    origin:"http://localhost:5500",
+   origin:"*",
+   methods:["GET","POST"],
+   allowedHeaders:["Content-Type"]
+}));
+// app.use((req,res,next)=>{
+//     res.header("Access-Control-Allow-Origin","*");
+//     next();
+// });
+// app.use("/test",express.static("../../"));
+// app.use(express.static("../../"));
+app.use("/",express.static("../../"));
 app.use("/projects",(req,res,next)=>{
     next();
 },express.static("projects/"));
@@ -456,7 +480,8 @@ const io = new Server(server,{
     cors:{
         // origin:"http://127.0.0.1:5500"
         origin:"*"
-    }
+    },
+    maxHttpBufferSize:1e7
 });
 
 class User{
@@ -506,7 +531,7 @@ class User{
         return u;
     }
     curProject:Project;
-    async createProject(name:string){
+    async createProject(name:string,code:string){
         let exists = await access("projects/"+this.email+"/"+name+"/meta.json");
         if(exists){
             console.log("** project already exists, not creating");
@@ -514,19 +539,30 @@ class User{
         }
         let p = new Project();
         p.name = name;
+        p.code = code;
         p.owner = this.email;
         p._owner = this;
         projects.set(p.getId(),p);
         await mkdir("projects/"+this.email+"/"+name);
-        await write("projects/"+this.email+"/"+name+"/data.json",await read("TestFile1.json","utf8"),"utf8");
+        let dataStr = await read("TestFile2.json","utf8");
+        let data = JSON.parse(dataStr);
+        data.filename = name;
+        data.owner = this.email;
+        await write("projects/"+this.email+"/"+name+"/data.json",JSON.stringify(data),"utf8");
         p.save();
         console.log(":: created project: "+name+" by "+this.email);
+        return 1;
     }
-    async openProject(email:string,name:string){
+    async openProject(email:string,name:string,code:string,f:(d:any)=>void){
         if(this.curProject) this.leaveProject();
         let p = await getProject(email,name);
         if(!p){
             console.log("** tried to get project that doesn't exist: "+name+" by "+this.email);
+            if(f) f({err:"a project with that name doesn't exist",code:0});
+            return;
+        }
+        if(p.code != code && p.code != null){
+            if(f) f({err:"wrong code",code:1});
             return;
         }
         this.curProject = p;
@@ -560,6 +596,18 @@ class User{
         }
     }
 }
+async function openProjectReadOnly(email:string,name:string,code:string,f:(data:any)=>void){
+    let p = await getProject(email,name);
+    if(!p){
+        if(f) f({err:"a project with that name doesn't exist",code:0});
+        return;
+    }
+    if(p.code != code && p.code != null){
+        if(f) f({err:"wrong code",code:1});
+        return;
+    }
+    return p;
+}
 class Project{
     constructor(){
         this.active = [];
@@ -570,10 +618,13 @@ class Project{
     _owner:User;
     _active:User[];
     name:string;
+    code:string;
 
     _data:string;
 
     story:Story;
+
+    images:string[] = [];
 
     getId(){
         return this.owner+"_"+this.name;
@@ -606,7 +657,8 @@ class Project{
     serialize(){
         return {
             name:this.name,
-            owner:this.owner
+            owner:this.owner,
+            code:this.code
         };
     }
     async save(){
@@ -631,9 +683,15 @@ async function getWho(socket:Socket){
     if(!email) return;
     u = await new Promise<User>(async resolve=>{
         fs.readFile("users/"+email+".json",{encoding:"utf8"},(err,data)=>{
-            // console.log("found",email,data);
             if(err) resolve(null);
-            else resolve(User.from(JSON.parse(data),socket));
+            else{
+                try{
+                    resolve(User.from(JSON.parse(data),socket));
+                }
+                catch(e){
+                    resolve(null);
+                }
+            }
         });
     });
     return u;
@@ -647,9 +705,15 @@ async function getUserByEmail(email:string){
     }
     return await new Promise<User>(async resolve=>{
         fs.readFile("users/"+email+".json",{encoding:"utf8"},(err,data)=>{
-            // console.log("found",email,data);
             if(err) resolve(null);
-            else resolve(User.from(JSON.parse(data),null));
+            else{
+                try{
+                    resolve(User.from(JSON.parse(data),null));
+                }
+                catch(e){
+                    resolve(null);
+                }
+            }
         });
     });
 }
@@ -658,16 +722,34 @@ async function getProject(email:string,pname:string){
     let p = projects.get(email+"_"+pname);
     if(p){
         projects.set(p.getId(),p);
+        if(!p.story) p.story = await Story.load(p);
+        console.log("...found");
         return p;
     }
     p = await new Promise<Project>(async resolve=>{
+        console.log("...didn't find, reading",email,pname);
         fs.readFile("projects/"+email+"/"+pname+"/"+"meta.json",{encoding:"utf8"},async (err,data)=>{
+            console.log("dat:",data);
             if(err) resolve(null);
-            else resolve(Project.from(JSON.parse(data),await getUserByEmail(email)));
+            else{
+                try{
+                    resolve(Project.from(JSON.parse(data),await getUserByEmail(email)));
+                }
+                catch(e){
+                    resolve(null);
+                }
+            }
         });
     });
-    if(!p) return;
+    if(!p){
+        console.log("...couldn't find file/folder");
+        return;
+    }
     p.story = await Story.load(p);
+    console.log("...found and loading!!!");
+
+    p.images = await readdir(`projects/${email}/${pname}/images`);
+
     projects.set(p.getId(),p);
     return p;
 }
@@ -697,16 +779,34 @@ io.on("connection",socket=>{
         if(!u) return;
         console.log(u.email+": "+msg);
     });
-    socket.on("createProject",async (name:string)=>{
+    socket.on("createProject",async (name:string,code:string,f:(i:number)=>void)=>{
         let u = await getWho(socket);
         if(!u) return;
-        await u.createProject(name);
+        let res = await u.createProject(name,code);
+        f(res);
     });
-    socket.on("openProject",async (email:string,name:string,f:(data:any)=>void)=>{
+    socket.on("openProject",async (email:string,name:string,code:string,f:(data:any)=>void)=>{
         let u = await getWho(socket);
         if(!u) return;
-        let p = await u.openProject(email,name);
+        let p = await u.openProject(email,name,code,f);
         f(p?.serializeNetwork());
+    });
+    socket.on("openProject_readonly",async (email:string,name:string,code:string,f:(data:any)=>void)=>{
+        let p = await openProjectReadOnly(email,name,code,f);
+        f(p?.serializeNetwork());
+    });
+    socket.on("getAllProjects",async (f:(list:string[])=>void)=>{
+        let users = await readdir("projects");
+        let allP = [];
+        for(const u of users){
+            let projects = await readdir("projects/"+u);
+            allP = allP.concat(projects.map(v=>{
+                return {
+                    email:u,pid:v
+                };
+            }));
+        }
+        f(allP);
     });
     // Story
     socket.on("s_selectBoard",async (id:number)=>{
@@ -775,7 +875,7 @@ io.on("connection",socket=>{
 
         u.room().emit("renameChoice",u.email,id,i,newtext);
     });
-    socket.on("s_addChoice",async (id:number,labels:string[])=>{
+    socket.on("s_addChoice",async (id:number,labels:string[],custom?:number[])=>{
         let u = await getWho(socket);
         if(!u) return;
         let p = u.curProject;
@@ -783,10 +883,11 @@ io.on("connection",socket=>{
 
         let b = p.story.getBoard(id);
         if(!b) return;
-        b.addChoice(labels);
+        if(custom) b.addChoice(labels,custom.map(v=>p.story.allBoards.find(w=>w._id == v)));
+        else b.addChoice(labels);
         p.story.save();
 
-        u.room().emit("addChoice",u.email,id,labels);
+        u.room().emit("addChoice",u.email,id,labels,custom);
     });
     socket.on("s_removeChoice",async (id:number,i:number[],deleteBoard:boolean)=>{
         let u = await getWho(socket);
@@ -813,6 +914,23 @@ io.on("connection",socket=>{
 
         u.room().emit("deleteBoard",u.email,id);
     });
+    socket.on("s_setBGImage",async (id:number,name:string,f:(res:number)=>void)=>{
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+
+        if(!p.images.includes(name) && name != null){
+            f(0);
+            return;
+        }
+
+        let b = p.story.getBoard(id);
+        if(!b) return;
+        b.img = name;
+        
+        u.room().emit("setBGImage",u.email,id,name);
+    });
     // socket.on("s_moveBoardsTo",async (list:{id:number,x:number,y:number}[])=>{
     //     let u = await getWho(socket);
     //     if(!u) return;
@@ -828,7 +946,8 @@ io.on("connection",socket=>{
         if(!u) return;
         let p = u.curProject;
         if(!p) return;
-        p.story._save();
+        // p.story._save();
+        p.save();
     });
 
     socket.on("s_moveCursor",async (x:number,y:number)=>{
@@ -850,13 +969,50 @@ io.on("connection",socket=>{
         await write(url,binaryData,"binary");
         f(url);
     });
-    socket.on("s_getImages",async ()=>{
+    socket.on("s_getImages",async (f:(list:string[])=>void)=>{
         let u = await getWho(socket);
         if(!u) return;
         let p = u.curProject;
         if(!p) return;
+
+        f(p.images);
+    });
+
+    socket.on("s_uploadImage",async (name:string,file:File,f:(url:string)=>void)=>{
+        if(name.includes("/")) return;
+        
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+        
+        if(!p.images.includes(name)){
+            p.images.push(name);
+        }
+        let url = "projects/"+p.owner+"/"+p.name+"/images/"+name;
+        await write(url,file);
+        f(url);
     });
 });
+
+// app.use(express.urlencoded({extended:true}));
+// app.post("/upload",(req, res) => {
+//     console.log("UPLOAD",req.body.name);
+//     res.send("success");
+//     // return;
+//     // req.on("end",()=>{
+//     //     console.log("...upload",req.body);
+//     // });
+
+//     return;
+    
+//     const writeStream = fs.createWriteStream('uploads/image.jpg');
+//     req.pipe(writeStream);
+//     req.on('end', () => {
+//       console.log('Image uploaded successfully!');
+//       res.send('Image uploaded successfully!');
+//     });
+// });
 
 server.listen(3000,()=>{
     console.log('listening on *:3000');

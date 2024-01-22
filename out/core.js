@@ -1,3 +1,19 @@
+function LSGet(id) {
+    return localStorage.getItem(AID + id);
+}
+function LSGetSet(id, req) {
+    let v = localStorage.getItem(AID + id);
+    if (v == "null")
+        v = null;
+    if (v)
+        return v;
+    v = req();
+    localStorage.setItem(AID + id, v);
+    return v;
+}
+function getUsername() {
+    return LSGetSet("name", () => prompt("Enter your username"));
+}
 function wait(delay) {
     return new Promise(resolve => {
         setTimeout(() => {
@@ -5,36 +21,6 @@ function wait(delay) {
         }, delay);
     });
 }
-let b_theme = document.querySelector(".b-theme");
-let themeImg = b_theme.querySelector("img");
-let theme = localStorage.getItem("__SE-theme") || "light";
-function setTheme(val) {
-    let html = document.body.parentElement;
-    // html.style.filter = (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none");
-    html.style.setProperty("--theme-filter", (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none"));
-    html.style.setProperty("--img-filter", (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(1) contrast(1)" : "none"));
-    localStorage.setItem("__SE-theme", val);
-    themeImg.src = (val == "dark" ? "assets/dark_mode.svg" : "assets/light_mode.svg");
-}
-setTheme(theme);
-b_theme.addEventListener("click", e => {
-    if (theme == "dark")
-        theme = "light";
-    else
-        theme = "dark";
-    setTheme(theme);
-});
-// testFileSize();
-let b_open = document.querySelector(".b-open");
-async function openDir() {
-    story.handle = await showDirectoryPicker({
-        mode: "readwrite",
-        id: "openDir"
-    });
-}
-b_open.addEventListener("click", e => {
-    openDir();
-});
 let panes = document.querySelectorAll(".pane");
 let pane_editBoard = document.querySelector(".edit-board");
 let pane_editChoice = document.querySelector(".edit-choice");
@@ -60,13 +46,15 @@ let connectionData = [
     }
 ];
 class Story {
-    constructor(filename) {
+    constructor(filename, owner) {
         this.filename = filename;
         this._i = 0;
         this.start = new Board(this, 0, g_gap);
         this.origin = new OriginPoint(this, 0, 0);
+        this.owner = owner;
     }
     filename;
+    owner;
     _i;
     start;
     origin;
@@ -319,11 +307,12 @@ class Story {
             if (!o)
                 return;
         }
-        let s = new Story(o.filename);
+        let s = new Story(o.filename, o.owner);
         s._i = 0;
         s.setPan(o.panX, o.panY);
         let o1 = o.boards[0];
         let root = new Board(s, o1.x, o1.y, o1.title, o1.text, o1.tags);
+        root.img = o1.img;
         root._id = o1._id;
         s.start = root;
         root.load();
@@ -331,6 +320,7 @@ class Story {
         for (let i = 1; i < o.boards.length; i++) {
             let b = o.boards[i];
             let b1 = new Board(s, b.x, b.y, b.title, b.text, b.tags);
+            b1.img = b.img;
             b1._id = b._id;
             list.push(b1);
         }
@@ -542,6 +532,7 @@ class Board extends StoryObj {
     l_tag;
     visitorList;
     visitors = [];
+    img;
     load() {
         super.load();
         if (this.div)
@@ -564,6 +555,8 @@ class Board extends StoryObj {
             this.story.hoverBoard = null;
         });
         div.addEventListener("mousedown", e => {
+            if (menus.children.length)
+                return;
             if (e.ctrlKey)
                 return;
             this.story.selectBoard(this);
@@ -729,6 +722,39 @@ class Board extends StoryObj {
             }
         socket.emit("s_deselectBoard", this._id);
     }
+    setImg(name, noEmit = false) {
+        this.img = name;
+        if (name == null) {
+            if (_editBoard_b == this) {
+                l_bgPreview.textContent = "No file.";
+                img_bgPreview.classList.add("hide");
+                img_bgPreview.src = "#";
+            }
+        }
+        if (name == null && noEmit) {
+            return;
+        }
+        if (name) {
+            if (_editBoard_b == this) {
+                l_bgPreview.textContent = name;
+                img_bgPreview.classList.remove("hide");
+                img_bgPreview.src = `${serverURL}/projects/${this.story.owner}/${this.story.filename}/images/${name}`;
+            }
+        }
+        if (!noEmit)
+            socket.emit("s_setBGImage", this._id, name, (code) => {
+                if (code == 0) {
+                    console.warn("failed to set bg img, it doesn't exist");
+                    this.img = null;
+                    if (_editBoard_b == this) {
+                        l_bgPreview.textContent = "No file.";
+                        img_bgPreview.classList.add("hide");
+                        img_bgPreview.src = "#";
+                    }
+                }
+            });
+        this.story.save();
+    }
     save() {
         let o = {
             title: this.title,
@@ -760,9 +786,6 @@ class StoryButton {
     par;
     path;
 }
-let i_title = pane_editBoard.querySelector(".i-title");
-let ta_text = pane_editBoard.querySelector(".ta-text");
-let _editBoard_b;
 function loadEditBoard(b) {
     if (!grid)
         return;
@@ -817,6 +840,7 @@ function loadEditBoard(b) {
         b.write();
         socket.emit("s_editBoardText", b._id, b.text);
     };
+    b.setImg(b.img, true);
 }
 // function setupInput(inp:HTMLInputElement,f:()=>void){
 //     inp.addEventListener("blur",f);

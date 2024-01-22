@@ -1,0 +1,50 @@
+{
+    "filename": "TestFile2",
+    "_i": 19,
+    "panX": 0,
+    "panY": 0,
+    "boards": [
+        {
+            "title": "The Starting Board",
+            "x": 130,
+            "y": 285.77700693756543,
+            "_id": 1,
+            "text": "Welcome!",
+            "tags": [
+                "new_board_2"
+            ],
+            "btns": [
+                {
+                    "l": "Go left...",
+                    "id": 3
+                },
+                {
+                    "l": "Go right...",
+                    "id": 4
+                }
+            ]
+        },
+        {
+            "title": "A Castle",
+            "x": -57,
+            "y": 523.8513379583806,
+            "_id": 3,
+            "text": "You are at a castle.",
+            "tags": [
+                "new_board_4"
+            ],
+            "btns": []
+        },
+        {
+            "title": "A Meadow",
+            "x": 278,
+            "y": 508.9930624380628,
+            "_id": 4,
+            "text": "You are at the meadow.",
+            "tags": [
+                "new_board_5"
+            ],
+            "btns": []
+        }
+    ]
+}

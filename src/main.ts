@@ -1,3 +1,53 @@
+let b_theme = document.querySelector(".b-theme") as HTMLButtonElement;
+let themeImg = b_theme.querySelector("img");
+let theme = localStorage.getItem("__SE-theme") || "light";
+
+let i_title = pane_editBoard.querySelector(".i-title") as HTMLInputElement;
+let ta_text = pane_editBoard.querySelector(".ta-text") as HTMLTextAreaElement;
+let _editBoard_b:Board;
+
+function setTheme(val:string){
+    let html = document.body.parentElement;
+    // html.style.filter = (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none");
+    html.style.setProperty("--theme-filter",(val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none"));
+    html.style.setProperty("--img-filter",(val == "dark" ? "invert(1) hue-rotate(180deg) brightness(1) contrast(1)" : "none"));
+    localStorage.setItem("__SE-theme",val);
+    themeImg.src = (val == "dark" ? "assets/dark_mode.svg" : "assets/light_mode.svg");
+}
+setTheme(theme);
+b_theme.addEventListener("click",e=>{
+    if(theme == "dark") theme = "light";
+    else theme = "dark";
+    setTheme(theme);
+});
+
+let b_open = document.querySelector(".b-open") as HTMLButtonElement;
+let b_create = document.querySelector(".b-create") as HTMLButtonElement;
+async function openDir(){
+    story.handle = await showDirectoryPicker({
+        mode:"readwrite",
+        id:"openDir"
+    });
+}
+b_open.addEventListener("click",e=>{
+    // openDir();
+    // let name = prompt("Please type the name of the project you wish to join");
+    openProjectMenu();
+});
+b_create.addEventListener("click",e=>{
+    let name = prompt("Please enter the project name:");
+    if(!name) return;
+    let code = prompt("Please enter a passcode in order to edit the project:");
+    if(!code) return;
+    socket.emit("createProject",name,code,(res:number)=>{
+        if(res == 1){
+            alert("Successfully created project: "+name);
+            localStorage.setItem(AID+"code-"+name,code);
+        }
+        else alert("Failed to create project");
+    });
+});
+
 let i_searchAll = document.querySelector(".i-search-all") as HTMLInputElement;
 let choiceList = document.querySelector(".choice-list");
 let i_addChoice = document.querySelector(".i-add-choice") as HTMLInputElement;
@@ -9,6 +59,29 @@ let b_playFromHere = document.querySelector(".b-play-from-here") as HTMLButtonEl
 let b_export = document.querySelector(".b-export") as HTMLButtonElement;
 let b_import = document.querySelector(".b-import") as HTMLButtonElement;
 let b_reset = document.querySelector(".b-reset") as HTMLButtonElement;
+
+const b_chooseBGImg = document.querySelector(".b-choose-bg-img") as HTMLButtonElement;
+const b_removeBGImg = document.querySelector(".b-remove-bg-img") as HTMLButtonElement;
+const l_bgPreview = document.querySelector(".l-bg-preview") as HTMLImageElement;
+const img_bgPreview = document.querySelector(".img-bg-preview") as HTMLImageElement;
+
+b_chooseBGImg.addEventListener("click",async e=>{
+    if(story.selBoards.length != 1) return;
+    let sel = story.selBoards[0];
+    
+    let name = await chooseImage();
+    if(!name) return;
+    
+    sel.setImg(name);
+});
+b_removeBGImg.addEventListener("click",async e=>{
+    if(story.selBoards.length != 1) return;
+    let sel = story.selBoards[0];
+    
+    if(sel.img == null) return;
+    
+    sel.setImg(null);
+});
 
 b_export.addEventListener("click",e=>{
     let o = story.getSaveObj();
@@ -67,13 +140,33 @@ b_addChoice.addEventListener("click",e=>{
     story.selectBoard(res[0]);
 });
 b_play.addEventListener("click",e=>{
+    if(!story) return;
     story._save();
     setPlayI(0);
-    location.pathname = "/play";
+    // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
+    let url = new URL(location.href);
+    url.pathname = "play/";
+    url.searchParams.set("email",story.owner);
+    url.searchParams.set("pid",story.filename);
+    // location.assign(url);
+    let a = document.createElement("a");
+    a.href = url.href;
+    a.target = "_blank";
+    a.click();
 });
 b_resumePlay.addEventListener("click",e=>{
+    if(!story) return;
     story._save();
-    location.pathname = "/play";
+    // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
+    let url = new URL(location.href);
+    url.pathname = "play/";
+    url.searchParams.set("email",story.owner);
+    url.searchParams.set("pid",story.filename);
+    // location.assign(url);
+    let a = document.createElement("a");
+    a.href = url.href;
+    a.target = "_blank";
+    a.click();
 });
 b_save.addEventListener("click",e=>{
     story._save();
@@ -156,6 +249,7 @@ document.addEventListener("mousemove",e=>{
 });
 let mouseDown = [false,false,false];
 document.addEventListener("mousedown",e=>{
+    if(menus.children.length) return;
     mouseDown[e.button] = true;
     if(!story) return;
     
@@ -186,7 +280,7 @@ document.addEventListener("mousedown",e=>{
             }
             if(cancel) return;
             par.addChoice(list,children);
-            socket.emit("s_addChoice",par._id,list);
+            socket.emit("s_addChoice",par._id,list,children.map(v=>v._id));
 
             story.save();
             story.deselectBoards();
@@ -198,7 +292,7 @@ document.addEventListener("mousedown",e=>{
         else story.dragBoards = [story.hoverBoard];
         // story.selectBoard(story.hoverBoard);
     }
-    else if(!overPane){
+    else if(!overPane && menus.children.length == 0){
         story.isPanning = true;
     }
 });
@@ -286,7 +380,7 @@ if(false){
         story.makeConnection(story.origin,story.start,ConnectionType.start);
     }
     else{
-        story = new Story("TestFile1");
+        story = new Story("TestFile1","");
         story.init();
     }
 }

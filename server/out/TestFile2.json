@@ -1,0 +1,19 @@
+{
+    "filename": "TestFile2",
+    "_i": 2,
+    "panX": 0,
+    "panY": 0,
+    "boards": [
+        {
+            "title": "The Starting Board",
+            "x": 130,
+            "y": 285.77700693756543,
+            "_id": 1,
+            "text": "Welcome!",
+            "tags": [
+                "new_board_2"
+            ],
+            "btns": []
+        }
+    ]
+}
