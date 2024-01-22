@@ -539,6 +539,7 @@ class User {
         }
         let p = new Project();
         p.name = name;
+        p.display = name;
         p.code = code;
         p.owner = this.email;
         p._owner = this;
@@ -616,6 +617,7 @@ class Project {
         this.active = [];
         this._active = [];
     }
+    display;
     owner;
     active;
     _owner;
@@ -631,6 +633,8 @@ class Project {
     static from(data, u) {
         let p = new Project();
         p.owner = u.email;
+        p.name = data.name;
+        p.display = data.display;
         p._owner = u;
         let ok = Object.keys(data);
         for (const k of ok) {
@@ -657,7 +661,8 @@ class Project {
         return {
             name: this.name,
             owner: this.owner,
-            code: this.code
+            code: this.code,
+            display: this.display || this.name
         };
     }
     async save() {
@@ -666,6 +671,10 @@ class Project {
             this.story._save();
         // await write("projects/"+this.owner+"/"+this.name+"/data.json",this._data,"utf8");
         console.log("-- saved project: " + this.name);
+    }
+    changeDisplayName(display) {
+        this.display = display;
+        this.save();
     }
 }
 const users = new Map();
@@ -807,11 +816,16 @@ io.on("connection", socket => {
         let allP = [];
         for (const u of users) {
             let projects = await readdir("projects/" + u);
-            allP = allP.concat(projects.map(v => {
-                return {
-                    email: u, pid: v
-                };
-            }));
+            // let newList = [];
+            for (const v of projects) {
+                let mStr = await read("projects/" + u + "/" + v + "/meta.json");
+                let m = (mStr ? JSON.parse(mStr) : null);
+                console.log(m);
+                allP.push({
+                    email: u, pid: v, display: (m?.display || v)
+                });
+            }
+            // allP = allP.concat(newList);
         }
         f(allP);
     });
@@ -1017,6 +1031,34 @@ io.on("connection", socket => {
         let url = "projects/" + p.owner + "/" + p.name + "/images/" + name;
         await write(url, file);
         f(url);
+    });
+    socket.on("s_renameProject", async (email, pid, display, f) => {
+        if (!f)
+            return;
+        if (!display || !pid) {
+            f({ err: "err: invalid name" });
+            return;
+        }
+        let u = await getWho(socket);
+        if (!u) {
+            f({ err: "err: you don't have permission to do this" });
+            return;
+        }
+        let p = await getProject(email, pid);
+        if (!p) {
+            f({ err: "err: can't find project" });
+            return;
+        }
+        if (email != u.email) {
+            f({ err: "err: you don't have permission to do this" });
+            return;
+        }
+        if (p.display == display) {
+            f({ err: "err: same name" });
+            return;
+        }
+        p.changeDisplayName(display);
+        f({});
     });
 });
 // app.use(express.urlencoded({extended:true}));

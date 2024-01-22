@@ -145,7 +145,7 @@ b_play.addEventListener("click",e=>{
     setPlayI(0);
     // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
     let url = new URL(location.href);
-    url.pathname = "play/";
+    url.pathname += "play/index.html";
     url.searchParams.set("email",story.owner);
     url.searchParams.set("pid",story.filename);
     // location.assign(url);
@@ -159,7 +159,7 @@ b_resumePlay.addEventListener("click",e=>{
     story._save();
     // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
     let url = new URL(location.href);
-    url.pathname = "play/";
+    url.pathname += "play/index.html";
     url.searchParams.set("email",story.owner);
     url.searchParams.set("pid",story.filename);
     // location.assign(url);

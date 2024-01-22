@@ -50,7 +50,7 @@ header > div{
     padding:5px 25px;
 }
 .grid2{
-    background-image:url(/assets/grid.png);
+    background-image:url(../assets/grid.png);
     background-size:32px;
     width:100%;
     height:100%;
@@ -153,7 +153,7 @@ button{
     position:absolute;
     width:12px;
     height:12px;
-    background-image:url(/assets/chevron.png);
+    background-image:url(../assets/chevron.png);
     background-repeat:no-repeat;
     background-size:contain;
     image-rendering:pixelated;
@@ -167,7 +167,7 @@ button{
     position:absolute;
     width:12px;
     height:12px;
-    background-image:url(/assets/chevron.png);
+    background-image:url(../assets/chevron.png);
     background-repeat:no-repeat;
     background-size:contain;
     image-rendering:pixelated;

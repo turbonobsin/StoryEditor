@@ -41,6 +41,11 @@ function addMouseCursor(dat) {
 }
 // @ts-ignore
 let socket = io(serverURL);
+function _changeServerURL(s) {
+    serverURL = s;
+    // @ts-ignore
+    socket = io(s);
+}
 function setConneted() {
     console.log("NEW Connection Status: ", socket.connected);
 }
@@ -444,6 +449,9 @@ function openProjectMenu() {
             <div class="close">X</div>
         </div>
         <br>
+        <div>
+            <input type="text" placeholder="Search..." class="i-search-proj"><br><br>
+        </div>
         <div class="proj-list"></div>
         <br>
         <div class="select-footer">
@@ -452,6 +460,26 @@ function openProjectMenu() {
         </div>
     `;
     let projList = menu.querySelector(".proj-list");
+    let i_searchProj = menu.querySelector(".i-search-proj");
+    let list2 = [];
+    i_searchProj.addEventListener("input", e => {
+        let v = i_searchProj.value;
+        if (v == "") {
+            for (const c of projList.children) {
+                c.classList.remove("hide");
+            }
+            return;
+        }
+        for (let i = 0; i < projList.children.length; i++) {
+            let c = projList.children[i];
+            let name = list2[i].display;
+            console.log(name);
+            c.classList.add("hide");
+            if (name.toLowerCase().includes(v.toLowerCase())) {
+                c.classList.remove("hide");
+            }
+        }
+    });
     let sel;
     let b_confirm = menu.querySelector(".b-confirm");
     b_confirm.addEventListener("click", async (e) => {
@@ -464,11 +492,25 @@ function openProjectMenu() {
     });
     socket.emit("getAllProjects", (list) => {
         // console.warn("All projects",list);
+        myEmail = LSGet("email");
+        if (!myEmail)
+            return;
+        list = list.filter(v => v.pid != "images");
+        list2 = list;
         for (const data of list) {
             let d = document.createElement("div");
             d.innerHTML = `
-                <div>${data.pid}</div>
-                <div>${data.email}</div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <div class="l-display">${data.display}</div>
+                        <div>${data.email}</div>
+                    </div>
+                    ${data.email == myEmail ? `
+                    <div>
+                        <button class="b-rename">Rename</button>
+                    </div>
+                    ` : ""}
+                </div>
             `;
             d.addEventListener("click", e => {
                 for (const d1 of projList.children) {
@@ -479,6 +521,22 @@ function openProjectMenu() {
                 b_confirm.disabled = false;
             });
             projList.appendChild(d);
+            let display = d.querySelector(".l-display");
+            let b_rename = d.querySelector(".b-rename");
+            if (b_rename)
+                b_rename.addEventListener("click", e => {
+                    let newName = prompt("Old name: (" + data.display + ")\nNew name:");
+                    if (!newName)
+                        return;
+                    socket.emit("s_renameProject", data.email, data.pid, newName, (res) => {
+                        if (res.err)
+                            alert(res.err);
+                        else {
+                            display.textContent = newName;
+                            data.display = newName;
+                        }
+                    });
+                });
         }
     });
 }
