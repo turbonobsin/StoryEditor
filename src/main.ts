@@ -37,8 +37,12 @@ b_open.addEventListener("click",e=>{
 b_create.addEventListener("click",e=>{
     let name = prompt("Please enter the project name:");
     if(!name) return;
-    let code = prompt("Please enter a passcode in order to edit the project:");
-    if(!code) return;
+    let code:string;
+    while(true){
+        code = prompt("Please enter a passcode in order to edit the project:");
+        if(code == null) return;
+        if(!code) continue;
+    }
     socket.emit("createProject",name,code,(res:number)=>{
         if(res == 1){
             alert("Successfully created project: "+name);
@@ -59,6 +63,8 @@ let b_playFromHere = document.querySelector(".b-play-from-here") as HTMLButtonEl
 let b_export = document.querySelector(".b-export") as HTMLButtonElement;
 let b_import = document.querySelector(".b-import") as HTMLButtonElement;
 let b_reset = document.querySelector(".b-reset") as HTMLButtonElement;
+let b_logout = document.querySelector(".b-logout") as HTMLButtonElement;
+let l_g_email = document.querySelector(".l-g-email");
 
 const b_chooseBGImg = document.querySelector(".b-choose-bg-img") as HTMLButtonElement;
 const b_removeBGImg = document.querySelector(".b-remove-bg-img") as HTMLButtonElement;
@@ -83,6 +89,13 @@ b_removeBGImg.addEventListener("click",async e=>{
     sel.setImg(null);
 });
 
+b_logout.addEventListener("click",e=>{
+    if(!confirm("Are you sure you want to log out?")) return;
+    LSRemove("name");
+    LSRemove("email");
+    LSRemove("pc");
+    location.reload();
+});
 b_export.addEventListener("click",e=>{
     let o = story.getSaveObj();
     if(!o) return;
@@ -384,7 +397,9 @@ if(false){
         story.init();
     }
 }
-initNetworkFromEditor();
+window.addEventListener("load",e=>{
+    initNetworkFromEditor();
+});
 
 function resetFile(){
     localStorage.removeItem("__SELS-tmp");

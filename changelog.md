@@ -30,3 +30,7 @@
 
 ### 1/22/24
 - 
+
+- # later
+- fixed some issues with reloading lessons with empty boards in list
+- quite a few things QOL features / kinda essential

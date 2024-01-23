@@ -566,3 +566,9 @@ button{
 .proj-list > div:hover{
     background-color:gainsboro;
 }
+
+/*  */
+.l-g-email{
+    font-family:monospace;
+    margin-right:12px;;
+}

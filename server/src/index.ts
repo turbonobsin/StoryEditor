@@ -3,6 +3,7 @@ import express, { NextFunction, Request, Response } from "express";
 import {Server, Socket} from "socket.io";
 import fs from "fs";
 import cors from "cors";
+import readline from "readline";
 
 console.log("started...");
 
@@ -44,6 +45,17 @@ export function removeFile(path:string){
         fs.rm(path,err=>{
             if(err){
                 // console.log("err: ",err);
+                resolve(false);
+            }
+            else resolve(true);
+        });
+    });
+}
+export function removeDir(path:string){
+    return new Promise<boolean>(resolve=>{
+        // @ts-ignore
+        fs.rm(path,{recursive:true},err=>{
+            if(err){
                 resolve(false);
             }
             else resolve(true);
@@ -192,7 +204,7 @@ class Story{
         s.project = project;
         s._i = 0;
 
-        let o1 = o.boards[0];
+        let o1 = o.boards.find((v:Board)=>v != null);
         let root = new Board(s,o1.x,o1.y,o1.title,o1.text,o1.tags);
         root.img = o1.img;
         root._id = o1._id;
@@ -202,6 +214,7 @@ class Story{
         let list:Board[] = [root];
         for(let i = 1; i < o.boards.length; i++){
             let b = o.boards[i];
+            if(!b) continue;
             let b1 = new Board(s,b.x,b.y,b.title,b.text,b.tags);
             b1.img = b.img;
             b1._id = b._id;
@@ -209,11 +222,12 @@ class Story{
         }
         for(let i = 0; i < o.boards.length; i++){
             let b = o.boards[i];
+            if(!b) continue;
             let b1 = list[i];
             b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list.find(w=>w._id == v.id)));
         }
         for(const b of list){
-            if(!b._loaded) b.load();
+            if(b) if(!b._loaded) b.load();
         }
 
         s._i = o._i;
@@ -485,17 +499,20 @@ const io = new Server(server,{
 });
 
 class User{
-    constructor(socket:Socket,name:string,email:string){
+    constructor(socket:Socket,name:string,email:string,pass:string){
         this.socket = socket;
         this.id = socket?.id;
         this.name = name;
         this.email = email;
+        this.pass = pass;
     }
     id:string;
     name:string;
     email:string;
     myProjects:string[];
     socket:Socket;
+    pass:string;
+    allowedSocks:string[] = [];
 
     // story tmp
 
@@ -511,11 +528,19 @@ class User{
         return {
             name:this.name,
             email:this.email,
-            myProjects:this.myProjects
+            myProjects:this.myProjects,
+        };
+    }
+    serializeSave(){
+        return {
+            name:this.name,
+            email:this.email,
+            myProjects:this.myProjects,
+            pass:this.pass
         };
     }
     async save(){
-        let str = JSON.stringify(this.serialize());
+        let str = JSON.stringify(this.serializeSave());
         await write("users/"+this.email+".json",str,"utf8");
         if(!await access("projects/"+this.email)){
             await mkdir("projects/"+this.email);
@@ -523,7 +548,7 @@ class User{
         }
     }
     static from(data:any,socket:Socket){
-        let u = new User(socket,null,null);
+        let u = new User(socket,null,null,null);
         let ok = Object.keys(data);
         for(const k of ok){
             u[k] = data[k];
@@ -554,7 +579,7 @@ class User{
         console.log(":: created project: "+name+" by "+this.email);
         return 1;
     }
-    async openProject(email:string,name:string,code:string,f:(d:any)=>void){
+    async openProject(socket:Socket,email:string,name:string,code:string,f:(d:any)=>void){
         if(this.curProject) this.leaveProject();
         let p = await getProject(email,name);
         if(!p){
@@ -570,6 +595,11 @@ class User{
         if(!p.active.includes(this.email)){
             p.active.push(this.email);
             p._active.push(this);
+        }
+        // if(!this.socket) this.socket = socket;
+        if(!this.socket){
+            console.log("Err: could not find user socket");
+            return;
         }
         this.socket.join(this.curProject.getId());
         console.log(this.email+" joined: "+this.curProject.name,p.active);
@@ -684,7 +714,15 @@ const projects:Map<string,Project> = new Map();
 
 async function getWho(socket:Socket){
     let u = users.get(socket.id);
-    if(u) return u;
+    if(u){
+        if(!u.allowedSocks.includes(socket.id)){
+            console.log(" >> a user wasn't logged in but tried to access");
+            socket.emit("fix","The server has reloaded, this page will refresh to reconnect");
+            return;
+        }
+        return u;
+    }
+    return;
     let email = await new Promise<string>(resolve=>{
         socket.emit("requestUsername",(email:string,name:string)=>{
             resolve(email);
@@ -713,6 +751,7 @@ async function getUserByEmail(email:string){
             return v;
         }
     }
+    if(!(await access("users/"+email+".json"))) return;
     return await new Promise<User>(async resolve=>{
         fs.readFile("users/"+email+".json",{encoding:"utf8"},(err,data)=>{
             if(err) resolve(null);
@@ -765,13 +804,37 @@ async function getProject(email:string,pname:string){
 }
 
 io.on("connection",socket=>{
-    socket.on("login",async (email:string,name:string,f:(u:any)=>void)=>{
-        let user = users.get(socket.id);
+    socket.on("login",async (email:string,name:string,pass:string,f:(u:any)=>void)=>{
+        if(!f) return;
+        let user = await getUserByEmail(email);
+        if(!user && !name){
+            f({err:"invalid username"});
+            return;
+        }
+        // let user = users.get(socket.id);
         if(!user){
-            user = new User(socket,name,email);
+            user = new User(socket,name,email,pass);
             users.set(socket.id,user);
         }
+        else{
+            user.socket = socket;
+        }
+            if(user.pass == null && pass == null){
+                f({err:"pwDNE"});
+                return;
+            }
+            if(user.pass == null){
+                user.pass = pass;
+                await user.save();
+                console.log("saved user pass!");
+            }
+            if(user.pass != pass){
+                f({err:"password incorrect"});
+                return;
+            }
+        
         f(user.serialize());
+        user.allowedSocks.push(socket.id);
         users.set(socket.id,user);
         console.log(":: user logged in: ",user.email);
         user.save();
@@ -779,10 +842,11 @@ io.on("connection",socket=>{
     socket.on("disconnect",e=>{
         let u = users.get(socket.id);
         if(u){
+            u.allowedSocks.splice(u.allowedSocks.indexOf(socket.id));
             u.save();
             u.leaveProject();
         }
-        else console.log("** user disconnected but didn't have an account");
+        // else console.log("** user disconnected but didn't have an account");
     });
     socket.on("msg",async (msg:string)=>{
         let u = await getWho(socket);
@@ -798,7 +862,7 @@ io.on("connection",socket=>{
     socket.on("openProject",async (email:string,name:string,code:string,f:(data:any)=>void)=>{
         let u = await getWho(socket);
         if(!u) return;
-        let p = await u.openProject(email,name,code,f);
+        let p = await u.openProject(socket,email,name,code,f);
         f(p?.serializeNetwork());
     });
     socket.on("openProject_readonly",async (email:string,name:string,code:string,f:(data:any)=>void)=>{
@@ -806,6 +870,9 @@ io.on("connection",socket=>{
         f(p?.serializeNetwork());
     });
     socket.on("getAllProjects",async (f:(list:string[])=>void)=>{
+        let u = await getWho(socket);
+        if(!u) return;
+        
         let users = await readdir("projects");
         let allP = [];
         for(const u of users){
@@ -1038,6 +1105,46 @@ io.on("connection",socket=>{
         p.changeDisplayName(display);
         f({});
     });
+    socket.on("s_deleteProject",async (email:string,pid:string,f:(res:any)=>void)=>{
+        if(!f) return;
+        if(!email) return;
+        if(!pid) return;
+
+        if(email.includes("/")) return;
+        if(pid.includes("/")) return;
+
+        let u = await getWho(socket);
+        if(!u){
+            f({err:"err: you don't have permission to do this"});
+            return;
+        }
+        let p = await getProject(email,pid);
+        if(!p){
+            f({err:"err: can't find project"});
+            return;
+        }
+        if(email != u.email){
+            f({err:"err: you don't have permission to do this"});
+            return;
+        }
+
+        if(u.curProject == p) u.curProject = null;
+        projects.delete(p.name);
+        await removeDir("projects/"+email+"/"+pid);
+
+        socket.to(p.getId()).emit("deleteProject");
+        f({});
+    });
+
+    socket.on("accountExists",async (email:string,f:(v:boolean)=>void)=>{
+        if(!email) return;
+        if(!f) return;
+        if(users.has(email)){
+            f(true);
+            return;
+        }
+        f(await access("users/"+email+".json"));
+    });
 });
 
 // app.use(express.urlencoded({extended:true}));
@@ -1061,4 +1168,17 @@ io.on("connection",socket=>{
 
 server.listen(3000,()=>{
     console.log('listening on *:3000');
+});
+
+let rl = readline.createInterface(process.stdin,process.stdout);
+rl.on("line",(v:string)=>{
+    v = v.substring(2);
+    if(!v) return;
+
+    if(v == "stop"){
+        process.exit(0);
+    }
+    
+    // console.log("> "+v);
+    rl.write("> ");
 });

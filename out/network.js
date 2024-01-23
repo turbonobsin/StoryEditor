@@ -36,6 +36,7 @@ function addMouseCursor(dat) {
         div: d,
         col
     };
+    console.log("added mouse cursor...");
     cursorList.push(data);
     return data;
 }
@@ -67,9 +68,9 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
     setConneted();
 });
-socket.on("requestUsername", (f) => {
-    f(getEmail(), getUsername());
-});
+// socket.on("requestUsername",(f:(email:string,name:string)=>void)=>{
+//     f(getEmail(),getUsername());
+// });
 function createVisitorDiv(u, par) {
     if (par)
         par.style.border = "solid 3px " + u.col;
@@ -228,6 +229,14 @@ socket.on("setBGImage", (email, id, img) => {
         return;
     b.setImg(img, true);
 });
+socket.on("fix", (msg) => {
+    alert(msg);
+    location.reload();
+});
+socket.on("deleteProject", () => {
+    alert("The project you are currently editing has been deleted by the owner, refreshing page.");
+    location.reload();
+});
 // socket.on("moveBoardsTo",(email:string,list:{id:number,x:number,y:number}[])=>{
 //     for(const b of list){
 //         story.moveBoardTo(email,b.id,b.x,b.y);
@@ -240,6 +249,7 @@ class User {
             this[k] = data[k];
         }
     }
+    email;
     name;
     id;
     curP;
@@ -247,27 +257,99 @@ class User {
 let g_user;
 async function logUserIn() {
     let user = await new Promise(resolve => {
-        let email;
+        let email = LSGet("email");
         let username;
-        while (!email) {
-            email = getEmail();
+        let pass = LSGet("pc");
+        let times = 0;
+        function reset() {
+            email = null;
+            username = null;
+            times = 0;
+            test();
         }
-        while (!username) {
-            username = getUsername();
+        async function test() {
+            times++;
+            while (!email) {
+                // email = getEmail();
+                email = prompt("Enter your email");
+            }
+            let needsNewAccount = await new Promise(resolve => {
+                socket.emit("accountExists", email, (v) => {
+                    resolve(!v);
+                });
+            });
+            if (needsNewAccount) {
+                username = getUsername(email);
+                if (username == null) {
+                    reset();
+                    return;
+                }
+                pass = prompt("(We found that your account doesn't have a password)\n\nPlease choose a password\n\n**I recommend something you don't use anywhere else because these passwords aren't encrypted**");
+                if (pass == null) {
+                    reset();
+                    return;
+                }
+            }
+            // while(!pass){
+            //     pass = getPass();
+            // }
+            socket.emit("login", email, username, pass, (data) => {
+                if (!data) {
+                    resolve(null);
+                    console.warn("Unknown error logging in");
+                    return;
+                }
+                if (data.err) {
+                    if (data.err == "pwDNE") {
+                        LSRemove("pc");
+                        pass = prompt("(We found that your account doesn't have a password)\n\nPlease choose a password\n\n**I recommend something you don't use anywhere else because these passwords aren't encrypted**");
+                        test();
+                        return;
+                    }
+                    if (times > 1)
+                        alert("Err: " + data.err);
+                    pass = prompt("Please enter your password:");
+                    if (pass == null)
+                        if (confirm("Go back and use a different email?")) {
+                            LSRemove("name");
+                            LSRemove("email");
+                            LSRemove("pc");
+                            location.reload();
+                        }
+                    test();
+                    return;
+                }
+                let user = new User(data);
+                LSSet("email", email);
+                LSSet("pc", pass);
+                resolve(user);
+            });
         }
-        socket.emit("login", email, username, (data) => {
-            let user = new User(data);
-            resolve(user);
-        });
+        test();
     });
     g_user = user;
+    l_g_email.textContent = user.email;
+    let url = new URL(location.href);
+    let owner = url.searchParams.get("o");
+    let proj = url.searchParams.get("p");
+    if (owner && proj) {
+        let res = await loadProject(owner, proj);
+        if (!res) {
+            url.searchParams.delete("o");
+            url.searchParams.delete("p");
+            location.href = url.href;
+        }
+    }
+    else
+        openProjectMenu();
 }
 async function loadProject(email, name) {
     // let proj = g_user.curP || "tmp";
     let code = LSGet("code-" + name);
+    let codeIsWrong = (code == null);
     let pdata;
     async function promptCode(isFirst = false) {
-        if (!isFirst) {
+        if (codeIsWrong) {
             code = prompt("Please enter project pass code:");
             if (code == null)
                 return;
@@ -282,17 +364,21 @@ async function loadProject(email, name) {
             return;
         }
         if (pdata.err) {
+            codeIsWrong = true;
             if (pdata.code == 0) {
                 alert(pdata.err);
                 return;
             }
             else if (pdata.code == 1) {
-                alert(pdata.err);
+                if (!isFirst)
+                    alert(pdata.err);
                 await promptCode();
             }
         }
     }
     await promptCode(true);
+    if (!code)
+        return;
     localStorage.setItem(AID + "code-" + name, code || "");
     if (!pdata) {
         console.warn("could not get pdata");
@@ -312,7 +398,8 @@ async function loadProject(email, name) {
     story.deselectBoards();
     closeAllPanes();
     myCursor = cursorList.find(v => v.email == myEmail);
-    myCursor.div.style.display = "none";
+    if (myCursor)
+        myCursor.div.style.display = "none";
     story.userData = pdata.userData;
     for (const u of pdata.userData) {
         for (const id of u.sel) {
@@ -322,6 +409,7 @@ async function loadProject(email, name) {
                 story.selectBoard(story.getBoard(id));
         }
     }
+    return true;
 }
 async function initNetworkFromEditor() {
     await logUserIn();
@@ -432,6 +520,8 @@ async function chooseImage() {
         }
     });
     socket.emit("s_getImages", (list) => {
+        if (!list)
+            return;
         for (const name of list) {
             createImg(name, serverURL + "/projects/" + story.owner + "/" + story.filename + "/images/" + name);
         }
@@ -473,7 +563,6 @@ function openProjectMenu() {
         for (let i = 0; i < projList.children.length; i++) {
             let c = projList.children[i];
             let name = list2[i].display;
-            console.log(name);
             c.classList.add("hide");
             if (name.toLowerCase().includes(v.toLowerCase())) {
                 c.classList.remove("hide");
@@ -483,8 +572,18 @@ function openProjectMenu() {
     let sel;
     let b_confirm = menu.querySelector(".b-confirm");
     b_confirm.addEventListener("click", async (e) => {
-        await loadProject(sel.email, sel.pid);
-        closeMenu(menu);
+        let preStory = story;
+        let res = await loadProject(sel.email, sel.pid);
+        if (res) {
+            closeMenu(menu);
+            let url = new URL(location.href);
+            url.searchParams.set("o", story.owner);
+            url.searchParams.set("p", story.filename);
+            if (preStory)
+                location.href = url.href;
+            else
+                history.pushState(null, null, url.href);
+        }
     });
     let close = menu.querySelector(".close");
     close.addEventListener("click", e => {
@@ -506,8 +605,9 @@ function openProjectMenu() {
                         <div>${data.email}</div>
                     </div>
                     ${data.email == myEmail ? `
-                    <div>
-                        <button class="b-rename">Rename</button>
+                    <div style="display:flex;align-items:center;gap:20px">
+                        <button class="b-rename" style="height:30px">Rename</button>
+                        <button class="b-delete-proj" style="display:flex;justify-content:center;align-items:center"><div class="material-symbols-outlined">delete</div></button>
                     </div>
                     ` : ""}
                 </div>
@@ -519,6 +619,11 @@ function openProjectMenu() {
                 d.classList.add("sel");
                 sel = data;
                 b_confirm.disabled = false;
+            });
+            d.addEventListener("dblclick", e => {
+                sel = data;
+                b_confirm.disabled = false;
+                b_confirm.click();
             });
             projList.appendChild(d);
             let display = d.querySelector(".l-display");
@@ -537,7 +642,26 @@ function openProjectMenu() {
                         }
                     });
                 });
+            let b_delete = d.querySelector(".b-delete-proj");
+            if (b_delete)
+                b_delete.addEventListener("click", e => {
+                    if (!confirm("Are you sure you want to delete project: " + data.display + "?"))
+                        return;
+                    socket.emit("s_deleteProject", data.email, data.pid, (res) => {
+                        if (res.err)
+                            alert(res.err);
+                        else {
+                            d.parentElement.removeChild(d);
+                        }
+                    });
+                });
         }
     });
 }
+// window.addEventListener("beforeunload",e=>{
+//     grid.innerHTML = "";
+// });
+// window.addEventListener("popstate",e=>{
+//     location.reload();
+// });
 //# sourceMappingURL=network.js.map

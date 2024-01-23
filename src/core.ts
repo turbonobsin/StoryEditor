@@ -1,6 +1,12 @@
 function LSGet(id:string){
     return localStorage.getItem(AID+id);
 }
+function LSSet(id:string,v:string){
+    localStorage.setItem(AID+id,v);
+}
+function LSRemove(id:string){
+    localStorage.removeItem(AID+id);
+}
 function LSGetSet(id:string,req:()=>string){
     let v = localStorage.getItem(AID+id);
     if(v == "null") v = null;
@@ -9,8 +15,12 @@ function LSGetSet(id:string,req:()=>string){
     localStorage.setItem(AID+id,v);
     return v;
 }
-function getUsername(){
-    return LSGetSet("name",()=>prompt("Enter your username"));
+function getUsername(email:string){
+    return prompt("Creating a new account with email ("+email+"):\n\n Enter your username");
+    // return LSGetSet("name",()=>prompt("Creating a new account with email ("+email+"):\n\n Enter your username"));
+}
+function getPass(){
+    return LSGetSet("pc",()=>prompt((LSGet("email")?"(We found that your account doesn't have a password)\n\n":"")+"Please choose a password\n\n**I recommend something you don't use anywhere else because these passwords aren't encrypted**"));
 }
 
 function wait(delay:number){
@@ -147,6 +157,10 @@ class Story{
         }
     }
     deleteBoard(b:Board,isOther=false){
+        if(b.connections.some(v=>v.from == this.origin)){
+            alert("You can't delete the root board!");
+            return;
+        }
         let list = [...b.connections];
         for(const c of list){
             c.remove();
@@ -681,6 +695,10 @@ class Board extends StoryObj{
         this.div.style.border = null;
         this.visitorList.textContent = "";
         for(const u of this.visitors){
+            if(!u){
+                console.warn("Warn: could not find u from visitors:",this.visitors);
+                continue;
+            }
             let div = createVisitorDiv(u,this.div);
             this.visitorList.appendChild(div);
         }
