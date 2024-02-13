@@ -41,7 +41,7 @@ b_create.addEventListener("click",e=>{
     while(true){
         code = prompt("Please enter a passcode in order to edit the project:");
         if(code == null) return;
-        if(!code) continue;
+        if(code) break;
     }
     socket.emit("createProject",name,code,(res:number)=>{
         if(res == 1){

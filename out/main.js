@@ -42,8 +42,8 @@ b_create.addEventListener("click", e => {
         code = prompt("Please enter a passcode in order to edit the project:");
         if (code == null)
             return;
-        if (!code)
-            continue;
+        if (code)
+            break;
     }
     socket.emit("createProject", name, code, (res) => {
         if (res == 1) {
