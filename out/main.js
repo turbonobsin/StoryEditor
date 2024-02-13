@@ -71,6 +71,10 @@ const b_chooseBGImg = document.querySelector(".b-choose-bg-img");
 const b_removeBGImg = document.querySelector(".b-remove-bg-img");
 const l_bgPreview = document.querySelector(".l-bg-preview");
 const img_bgPreview = document.querySelector(".img-bg-preview");
+const b_chooseBGAudio = document.querySelector(".b-choose-bg-audio");
+const b_removeBGAudio = document.querySelector(".b-remove-bg-audio");
+const l_bgAudioPreview = document.querySelector(".l-bg-audio-preview");
+// const audio_bgPreview = document.querySelector(".audio-bg-preview") as HTMLImageElement;
 b_chooseBGImg.addEventListener("click", async (e) => {
     if (story.selBoards.length != 1)
         return;
@@ -87,6 +91,23 @@ b_removeBGImg.addEventListener("click", async (e) => {
     if (sel.img == null)
         return;
     sel.setImg(null);
+});
+b_chooseBGAudio.addEventListener("click", async (e) => {
+    if (story.selBoards.length != 1)
+        return;
+    let sel = story.selBoards[0];
+    let name = await chooseAudio();
+    if (!name)
+        return;
+    sel.setAudio(name);
+});
+b_removeBGAudio.addEventListener("click", async (e) => {
+    if (story.selBoards.length != 1)
+        return;
+    let sel = story.selBoards[0];
+    if (sel.audio == null)
+        return;
+    sel.setAudio(null);
 });
 b_logout.addEventListener("click", e => {
     if (!confirm("Are you sure you want to log out?"))

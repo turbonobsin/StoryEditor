@@ -223,6 +223,12 @@ socket.on("setBGImage",(email:string,id:number,img:string)=>{
 
     b.setImg(img,true);
 });
+socket.on("setBGAudio",(email:string,id:number,audio:string)=>{
+    let b = story.getBoard(id);
+    if(!b) return;
+
+    b.setAudio(audio,true);
+});
 
 socket.on("fix",(msg:string)=>{
     alert(msg);
@@ -535,6 +541,145 @@ async function chooseImage(){
         if(!list) return;
         for(const name of list){
             createImg(name,serverURL+"/projects/"+story.owner+"/"+story.filename+"/images/"+name);
+        }
+    });
+
+    return prom;
+}
+async function chooseAudio(){
+    back.classList.remove("hide");
+    
+    let res:(v:string)=>void;
+    let prom = new Promise<string>(resolve=>res = resolve);
+    
+    let menu = document.createElement("div");
+    menu.className = "pane image-menu";
+    menus.appendChild(menu);
+    menu.innerHTML = `
+        <div class="head">
+            <div>Select an Audio File</div>
+            <div class="close">X</div>
+        </div>
+        <br>
+        <div class="drag-cont">
+            <div class="drag-zone">
+                <div class="material-symbols-outlined">add</div>
+                <div>Drag and drop audio files to import</div>
+            </div>
+        </div>
+        <p>Your Audio Files</p>
+        <div class="your-images"></div>
+        <div class="select-footer">
+            <div class="l-img-name">No file selected.</div>
+            <button class="b-confirm" disabled>Confirm</button>
+        </div>
+    `;
+    let sel:string;
+    let l_imgName = menu.querySelector(".l-img-name");
+    let b_confirm = menu.querySelector(".b-confirm") as HTMLButtonElement;
+    b_confirm.addEventListener("click",e=>{
+        res(sel);
+        closeMenu(menu);
+    });
+
+    let close = menu.querySelector(".close") as HTMLButtonElement;
+    close.addEventListener("click",e=>{
+        res(null);
+        closeMenu(menu);
+    });
+    
+    let dragZone = menu.querySelector(".drag-zone") as HTMLElement;
+    let yi = menu.querySelector(".your-images");
+
+    dragZone.addEventListener('dragover', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+    });
+
+    function createAudioDiv(name:string,url?:string){
+        let div = document.createElement("div");
+        div.className = "audio-list-item";
+        let label = document.createElement("div");
+        label.textContent = name;
+        let ad = document.createElement("audio");
+        ad.src = url;
+        ad.controls = true;
+        // ad.textContent = url;
+        div.appendChild(label);
+        div.appendChild(ad);
+        yi.appendChild(div);
+        div.onclick = function(){
+            sel = name;
+            for(const c of yi.children){
+                c.classList.remove("sel");
+            }
+            div.classList.add("sel");
+            l_imgName.textContent = "Selected: "+name;
+            b_confirm.disabled = false;
+        };
+        return ad;
+        // let img = document.createElement("img");
+        // yi.appendChild(img);
+        // if(url) img.src = url;
+
+        // img.onclick = function(){
+        //     sel = name;
+        //     for(const c of yi.children){
+        //         c.classList.remove("sel");
+        //     }
+        //     img.classList.add("sel");
+            // l_imgName.textContent = "Selected: "+name;
+        //     b_confirm.disabled = false;
+        // };
+
+        // return img;
+    }
+
+    dragZone.addEventListener("drop",async e=>{
+        e.stopPropagation();
+        e.preventDefault();
+        if(!e.dataTransfer.effectAllowed){
+            console.log("Err: data transfer wasn't allowed");
+            return;
+        }
+        
+        // let allowedTypes = ["png","jpg","jpeg","bmp","gif"];
+        let allowedTypes = ["mp3","ogg","wav"];
+        for(const f of e.dataTransfer.files){
+            if(f.size >= 1e7){
+                alert("The size of the file: "+f.name+" is too large.");
+                continue;
+            }
+            
+            let typeList = (f.type.includes("/") ? f.type.split("/") : ["any",f.type]);
+            let superType = typeList[0];
+            let type = typeList[1];
+    
+            console.warn("FILE TYPE:",f.type);
+            if(superType != "audio"){
+                alert(f.name+": "+"this file is not an image");
+                continue;
+            }
+            if(!allowedTypes.includes(type.toLowerCase())){
+                alert(f.name+": "+"Unsupported file type: "+type+" ! Supported types are: "+allowedTypes.join(", "));
+                continue;
+            }
+
+            let ad = createAudioDiv(f.name);
+            socket.emit("s_uploadAudioFile",f.name,f,(url:string)=>{
+                url = serverURL+"/"+url;
+                console.log("got url: ",url);
+                ad.src = url;
+            });
+        }
+    });
+    
+    socket.emit("s_getAudioFiles",(list:string[])=>{
+        console.warn("AUDIO FILE",list);
+        if(!list) return;
+        for(const name of list){
+            createAudioDiv(name,serverURL+"/projects/"+story.owner+"/"+story.filename+"/audio/"+name);
         }
     });
 

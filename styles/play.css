@@ -1,21 +1,16 @@
 :root{
     --btn-col:rgb(141, 164, 189);
+    --btn-bg:rgba(5,5,5,0.4);
     --bg:#050505;
     --col:silver;
 }
 
 body{
-    display:flex;
-    justify-content:center;
     background-color:var(--bg);
     color:var(--col);
     color-scheme:dark;
-
-    overflow-y:scroll;
-    overflow-x:hidden;
-
-    padding:0px 0px;
-    padding-top:100px;
+    overflow:hidden;
+    margin:0px;
 }
 .center-cont{
     margin-top:100px;
@@ -36,6 +31,19 @@ body{
     padding-bottom:300px;
     /* overflow-y:auto;
     overflow-x:hidden; */
+}
+.main{
+    width:100vw;
+    height:100vh;
+
+    display:flex;
+    justify-content:center;
+    
+    overflow-y:scroll;
+    overflow-x:hidden;
+
+    padding:0px 0px;
+    padding-top:100px;
 }
 
 ::-webkit-scrollbar {
@@ -79,11 +87,11 @@ body{
     border-radius:10px;
     border:solid 1px var(--btn-col);
     color:var(--btn-col);
-    background-color:var(--bg);
+    background-color:var(--btn-bg);
     font-size:16px;
     opacity:0.8;
     /* font-family:'Times New Roman', Times, serif; */
-    transition:translate 0.5s ease-out, background-color 0.5s ease-out;
+    transition:translate 0.25s ease-out, background-color 0.25s ease-out;
 
     animation:FadeInPItem forwards 1s;
 }
@@ -108,11 +116,27 @@ body{
     animation:FadeInPItem forwards 4s ease-out;
 }
 
+.img-cont{
+    position:fixed;
+    transform:translateX(-50%);
+    top:25px;
+    left:50%;
+    transform-origin:left center;
+}
 img{
-    margin-left:50%;
-    transform:translate(-50%);
-    animation:FadeInImg forwards 4s ease-out;
-    margin-bottom:5rem;
+    /* margin-left:50%; */
+    /* animation:FadeInImg forwards 4s ease-out; */
+    animation:FadeInImg2 forwards 14s cubic-bezier(0, 0, 0.41, 1.01);
+    /* margin-bottom:5rem; */
+
+    /* margin:auto; */
+    height:calc(100vh - 50px);
+    user-select:none;
+    -webkit-user-select:none;
+
+    /* opacity:0.6; */
+    /* filter:blur(10px); */
+    /* scale:0.92; */
 }
 
 @keyframes FadeInPItem {
@@ -153,3 +177,72 @@ img{
         filter:blur(0px) brightness(0.75);
     }
 }
+@keyframes FadeInImg2 {
+    0%{
+        opacity:0;
+        scale:0.85;
+        filter:blur(0px);
+    }
+    20%{
+        scale:1;
+    }
+    30%{
+        opacity:0.8;
+    }
+    30%{
+        opacity:1;
+        filter:blur(0px);
+        scale:1;
+    }
+    38%{
+        /* opacity:0.6; */
+        opacity:0.4;
+        filter:blur(10px) brightness(0.7);
+    }
+    50%{
+        scale:0.92;
+    }
+    100%{
+        opacity:0.4;
+        filter:blur(10px) brightness(0.7);
+        scale:0.92;
+    }
+}
+@keyframes FadeScreenOut{
+    0%{
+        filter:brightness(1);
+    }
+    50%{
+        filter:brightness(0);
+    }
+}
+body{
+    transition:filter 2s ease-out;
+    filter:brightness(1);
+}
+body.fade-out{
+    /* animation:FadeScreenOut 5s ease-out; */
+    filter:brightness(0);
+}
+/* @keyframes FadeInImg2 {
+    0%{
+        opacity:0;
+        scale:0.85;
+    }
+    20%{
+        scale:1;
+    }
+    40%{
+        opacity:1;
+    }
+    48%{
+        opacity:1;
+        filter:blur(0px);
+        scale:1;
+    }
+    70%{
+        opacity:0.6;
+        filter:blur(10px);
+        scale:0.92;
+    }
+} */

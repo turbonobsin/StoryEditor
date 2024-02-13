@@ -327,6 +327,7 @@ class Story {
         let o1 = o.boards[0];
         let root = new Board(s, o1.x, o1.y, o1.title, o1.text, o1.tags);
         root.img = o1.img;
+        root.audio = o1.audio;
         root._id = o1._id;
         s.start = root;
         root.load();
@@ -335,6 +336,7 @@ class Story {
             let b = o.boards[i];
             let b1 = new Board(s, b.x, b.y, b.title, b.text, b.tags);
             b1.img = b.img;
+            b1.audio = b.audio;
             b1._id = b._id;
             list.push(b1);
         }
@@ -547,6 +549,7 @@ class Board extends StoryObj {
     visitorList;
     visitors = [];
     img;
+    audio;
     load() {
         super.load();
         if (this.div)
@@ -628,6 +631,13 @@ class Board extends StoryObj {
         if (grid)
             if (!this.div.parentElement)
                 grid.appendChild(this.div);
+        if (this.img) {
+            this.div.classList.add("has-img");
+            let url = `${serverURL}/projects/${this.story.owner}/${this.story.filename}/images/${this.img}`;
+            this.div.style.setProperty("--bg-img", `url(${url})`);
+        }
+        else
+            this.div.classList.remove("has-img");
         if (false) { // collision
             let x = this.x;
             let y = this.y;
@@ -750,6 +760,7 @@ class Board extends StoryObj {
             }
         }
         if (name == null && noEmit) {
+            this.update();
             return;
         }
         if (name) {
@@ -772,6 +783,42 @@ class Board extends StoryObj {
                 }
             });
         this.story.save();
+        this.update();
+    }
+    setAudio(name, noEmit = false) {
+        this.audio = name;
+        if (name == null) {
+            if (_editBoard_b == this) {
+                l_bgAudioPreview.textContent = "No file.";
+                // audio_bgPreview.classList.add("hide");
+                // audio_bgPreview.src = "#";
+            }
+        }
+        if (name == null && noEmit) {
+            this.update();
+            return;
+        }
+        if (name) {
+            if (_editBoard_b == this) {
+                l_bgAudioPreview.textContent = name;
+                // audio_bgPreview.classList.remove("hide");
+                // audio_bgPreview.src = `${serverURL}/projects/${this.story.owner}/${this.story.filename}/images/${name}`;
+            }
+        }
+        if (!noEmit)
+            socket.emit("s_setBGAudio", this._id, name, (code) => {
+                if (code == 0) {
+                    console.warn("failed to set bg audio, it doesn't exist");
+                    this.audio = null;
+                    if (_editBoard_b == this) {
+                        l_bgAudioPreview.textContent = "No file.";
+                        // img_bgPreview.classList.add("hide");
+                        // img_bgPreview.src = "#";
+                    }
+                }
+            });
+        this.story.save();
+        this.update();
     }
     save() {
         let o = {
@@ -859,6 +906,7 @@ function loadEditBoard(b) {
         socket.emit("s_editBoardText", b._id, b.text);
     };
     b.setImg(b.img, true);
+    b.setAudio(b.audio, true);
 }
 // function setupInput(inp:HTMLInputElement,f:()=>void){
 //     inp.addEventListener("blur",f);

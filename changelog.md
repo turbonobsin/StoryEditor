@@ -34,3 +34,9 @@
 - # later
 - fixed some issues with reloading lessons with empty boards in list
 - quite a few things QOL features / kinda essential
+
+### 2/12/24
+- made the title of the play page be the title of the project/story
+- changed images in play mode so they get used as the background with a cool animation
+- added image preview to boards in editor
+- added audio file support (but not use in play mode yet)

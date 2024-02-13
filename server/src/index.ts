@@ -22,7 +22,7 @@ export function write(path:string,data:any,encoding?:BufferEncoding){
     return new Promise<boolean>(resolve=>{
         fs.writeFile(path,data,{encoding:"utf8"},err=>{
             if(err){
-                // console.log("err: could not find path: ",path);
+                console.log("err: could not find path: ",path);
                 resolve(false);
             }
             else resolve(true);
@@ -207,6 +207,7 @@ class Story{
         let o1 = o.boards.find((v:Board)=>v != null);
         let root = new Board(s,o1.x,o1.y,o1.title,o1.text,o1.tags);
         root.img = o1.img;
+        root.audio = o1.audio;
         root._id = o1._id;
         s.start = root;
         root.load();
@@ -217,6 +218,7 @@ class Story{
             if(!b) continue;
             let b1 = new Board(s,b.x,b.y,b.title,b.text,b.tags);
             b1.img = b.img;
+            b1.audio = b.audio;
             b1._id = b._id;
             list.push(b1);
         }
@@ -368,6 +370,7 @@ class Board extends StoryObj{
     l_tag:HTMLElement;
 
     img:string;
+    audio:string;
 
     load(){
         super.load();
@@ -444,6 +447,7 @@ class Board extends StoryObj{
             text:this.text,
             tags:this.tags,
             img:this.img,
+            audio:this.audio,
             btns:this.buttons.map(v=>{
                 let o2 = {
                     l:v.label,
@@ -544,7 +548,8 @@ class User{
         await write("users/"+this.email+".json",str,"utf8");
         if(!await access("projects/"+this.email)){
             await mkdir("projects/"+this.email);
-            await mkdir("projects/"+this.email+"/images");
+            // await mkdir("projects/"+this.email+"/images");
+            // await mkdir("projects/"+this.email+"/audio");
         }
     }
     static from(data:any,socket:Socket){
@@ -657,6 +662,7 @@ class Project{
     story:Story;
 
     images:string[] = [];
+    audio:string[] = [];
 
     getId(){
         return this.owner+"_"+this.name;
@@ -789,6 +795,8 @@ async function getProject(email:string,pname:string){
                 }
             }
         });
+        await mkdir(`projects/${email}/${pname}/images`);
+        await mkdir(`projects/${email}/${pname}/audio`);
     });
     if(!p){
         console.log("...couldn't find file/folder");
@@ -797,7 +805,8 @@ async function getProject(email:string,pname:string){
     p.story = await Story.load(p);
     console.log("...found and loading!!!");
 
-    p.images = await readdir(`projects/${email}/${pname}/images`);
+    p.images = await readdir(`projects/${email}/${pname}/images`) || [];
+    p.audio = await readdir(`projects/${email}/${pname}/audio`) || [];
 
     projects.set(p.getId(),p);
     return p;
@@ -819,19 +828,19 @@ io.on("connection",socket=>{
         else{
             user.socket = socket;
         }
-            if(user.pass == null && pass == null){
-                f({err:"pwDNE"});
-                return;
-            }
-            if(user.pass == null){
-                user.pass = pass;
-                await user.save();
-                console.log("saved user pass!");
-            }
-            if(user.pass != pass){
-                f({err:"password incorrect"});
-                return;
-            }
+        if(user.pass == null && pass == null){
+            f({err:"pwDNE"});
+            return;
+        }
+        if(user.pass == null){
+            user.pass = pass;
+            await user.save();
+            console.log("saved user pass!");
+        }
+        if(user.pass != pass){
+            f({err:"password incorrect"});
+            return;
+        }
         
         f(user.serialize());
         user.allowedSocks.push(socket.id);
@@ -1013,6 +1022,23 @@ io.on("connection",socket=>{
         
         u.room().emit("setBGImage",u.email,id,name);
     });
+    socket.on("s_setBGAudio",async (id:number,name:string,f:(res:number)=>void)=>{
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+
+        if(!p.audio.includes(name) && name != null){
+            f(0);
+            return;
+        }
+
+        let b = p.story.getBoard(id);
+        if(!b) return;
+        b.audio = name;
+        
+        u.room().emit("setBGAudio",u.email,id,name);
+    });
     // socket.on("s_moveBoardsTo",async (list:{id:number,x:number,y:number}[])=>{
     //     let u = await getWho(socket);
     //     if(!u) return;
@@ -1059,7 +1085,6 @@ io.on("connection",socket=>{
 
         f(p.images);
     });
-
     socket.on("s_uploadImage",async (name:string,file:File,f:(url:string)=>void)=>{
         if(name.includes("/")) return;
         
@@ -1072,6 +1097,48 @@ io.on("connection",socket=>{
             p.images.push(name);
         }
         let url = "projects/"+p.owner+"/"+p.name+"/images/"+name;
+        await write(url,file);
+        f(url);
+    });
+
+    socket.on("s_addAudioFile",async (name:string,filedata:string,f:(url:string)=>void)=>{
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+
+        // let base64Data = filedata.replace(/^data:image\/png;base64,/, "");
+        // let binaryData = Buffer.from(base64Data, 'base64');
+
+        // let url = "projects/"+p.owner+"/"+p.name+"/audio/"+name;
+        // await write(url,binaryData,"binary");
+
+        // console.log("going to write some audio data...");
+        
+        let url = "";
+        f(url);
+    });
+    socket.on("s_getAudioFiles",async (f:(list:string[])=>void)=>{
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+
+        f(p.audio);
+    });
+    socket.on("s_uploadAudioFile",async (name:string,file:File,f:(url:string)=>void)=>{
+        if(name.includes("/")) return;
+        
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+        
+        console.log("$ start uploading audio file");
+        if(!p.audio.includes(name)){
+            p.audio.push(name);
+        }
+        let url = "projects/"+p.owner+"/"+p.name+"/audio/"+name;
         await write(url,file);
         f(url);
     });
@@ -1172,7 +1239,7 @@ server.listen(3000,()=>{
 
 let rl = readline.createInterface(process.stdin,process.stdout);
 rl.on("line",(v:string)=>{
-    v = v.substring(2);
+    // v = v.substring(2);
     if(!v) return;
 
     if(v == "stop"){
@@ -1180,5 +1247,5 @@ rl.on("line",(v:string)=>{
     }
     
     // console.log("> "+v);
-    rl.write("> ");
+    // rl.write("> ");
 });

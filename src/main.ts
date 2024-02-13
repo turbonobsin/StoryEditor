@@ -71,6 +71,11 @@ const b_removeBGImg = document.querySelector(".b-remove-bg-img") as HTMLButtonEl
 const l_bgPreview = document.querySelector(".l-bg-preview") as HTMLImageElement;
 const img_bgPreview = document.querySelector(".img-bg-preview") as HTMLImageElement;
 
+const b_chooseBGAudio = document.querySelector(".b-choose-bg-audio") as HTMLButtonElement;
+const b_removeBGAudio = document.querySelector(".b-remove-bg-audio") as HTMLButtonElement;
+const l_bgAudioPreview = document.querySelector(".l-bg-audio-preview") as HTMLImageElement;
+// const audio_bgPreview = document.querySelector(".audio-bg-preview") as HTMLImageElement;
+
 b_chooseBGImg.addEventListener("click",async e=>{
     if(story.selBoards.length != 1) return;
     let sel = story.selBoards[0];
@@ -87,6 +92,23 @@ b_removeBGImg.addEventListener("click",async e=>{
     if(sel.img == null) return;
     
     sel.setImg(null);
+});
+b_chooseBGAudio.addEventListener("click",async e=>{
+    if(story.selBoards.length != 1) return;
+    let sel = story.selBoards[0];
+    
+    let name = await chooseAudio();
+    if(!name) return;
+    
+    sel.setAudio(name);
+});
+b_removeBGAudio.addEventListener("click",async e=>{
+    if(story.selBoards.length != 1) return;
+    let sel = story.selBoards[0];
+    
+    if(sel.audio == null) return;
+    
+    sel.setAudio(null);
 });
 
 b_logout.addEventListener("click",e=>{

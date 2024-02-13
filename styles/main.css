@@ -117,6 +117,22 @@ button{
     translate:-50% -50%;
 
     transition:border 0.3s ease-out;
+    --bg-img:none;
+}
+.board.has-img::after{
+    content:"";
+    background-image:var(--bg-img);
+    background-size:contain;
+    background-repeat:no-repeat;
+    background-position:right;
+    filter:var(--img-filter);
+    height:40px;
+    width:70px;
+    position:absolute;
+    bottom:3px;
+    right:3px;
+    margin:0px;
+    font-size:24px;
 }
 .board .title{
 
@@ -486,7 +502,8 @@ button{
     font-weight:normal;
 }
 
-.l-bg-preview{
+.l-bg-preview,
+.l-bg-audio-preview{
     text-transform:none;
     font-weight:normal;
     margin-top:1rem;
@@ -571,4 +588,32 @@ button{
 .l-g-email{
     font-family:monospace;
     margin-right:12px;;
+}
+
+/*  */
+
+.audio-list-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    text-transform:none;
+    height:64px;
+    border-radius:5px;
+    padding:0px 20px;
+    width:100%;
+}
+.audio-list-item:hover{
+    outline:solid 1px gray;
+}
+.audio-list-item > audio{
+    width:0px;
+    visibility:hidden;
+}
+.audio-list-item:hover > audio{
+    width:90%;
+    margin-left:auto;
+    visibility:unset;
+}
+.audio-list-item:hover > div{
+    display:none;
 }

@@ -36,6 +36,8 @@ let playData;
 let playStory;
 let allBoards = [];
 let passage = document.querySelector(".passage");
+let imgCont = document.querySelector(".img-cont");
+let main = document.querySelector(".main");
 // let buttons = document.querySelector(".buttons");
 function madeChoice(btn, button) {
     let p_btns = document.querySelectorAll(".p-btn");
@@ -46,17 +48,30 @@ function madeChoice(btn, button) {
     button.classList.add("picked");
 }
 function scrollDown() {
-    scrollTo({ left: 0, top: document.body.scrollHeight, behavior: "smooth" });
+    main.scrollTo({ left: 0, top: document.body.scrollHeight, behavior: "smooth" });
 }
+let curImage;
 async function loadBoard(b) {
     playData.locId = b._id;
     playData.save();
+    let imgUrl = b.img;
+    if (imgUrl) {
+        if (curImage) {
+            await wait(500);
+            document.body.classList.add("fade-out");
+            await wait(2000);
+            curImage.remove();
+            passage.textContent = "";
+            await wait(1000);
+            document.body.classList.remove("fade-out");
+        }
+    }
     let cont = document.createElement("div");
     passage.appendChild(cont);
-    let imgUrl = b.img;
-    console.log("img", imgUrl);
     if (imgUrl) {
         let img = document.createElement("img");
+        img.draggable = false;
+        curImage = img;
         img.src = `${serverURL}/projects/${playStory.owner}/${playStory.filename}/images/${imgUrl}`;
         let success = false;
         await new Promise(resolve => {
@@ -69,12 +84,16 @@ async function loadBoard(b) {
             };
         });
         // if(success){
-        cont.appendChild(img);
-        await wait(4000);
+        // cont.appendChild(img);
+        imgCont.appendChild(img);
+        // document.body.insertAdjacentElement("beforebegin",img);
+        await wait(4100);
         // }
+        // wait for image anim
+        // await wait(10000);
     }
     let lines = b.text.replaceAll("\n", " ").split(". ").map(v => v.trim());
-    await wait(500);
+    await wait(200); //500
     for (const l of lines) {
         let div = document.createElement("div");
         div.className = "p-item";
@@ -91,7 +110,7 @@ async function loadBoard(b) {
         scrollDown();
         return;
     }
-    await wait(500);
+    await wait(300); //500
     let buttons = document.createElement("div");
     cont.appendChild(buttons);
     buttons.className = "buttons";
@@ -110,7 +129,7 @@ async function loadBoard(b) {
             madeChoice(btn, button);
         });
         scrollDown();
-        await wait(500);
+        await wait(300); //500
     }
 }
 async function initPlay() {
@@ -168,6 +187,7 @@ async function initPlay() {
     pdata.storyData.owner = pdata.owner;
     story = Story.load(pdata.storyData);
     console.log("story", story);
+    document.title = story.filename;
     // 
     playData = PlayData.load();
     // playStory = Story.load();
