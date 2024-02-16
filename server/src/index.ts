@@ -707,6 +707,7 @@ class Project{
         if(this.story) this.story._save();
         // await write("projects/"+this.owner+"/"+this.name+"/data.json",this._data,"utf8");
         console.log("-- saved project: "+this.name);
+        io.to(this.getId()).emit("alert-save");
     }
 
     changeDisplayName(display:string){

@@ -51,10 +51,25 @@ function scrollDown() {
     main.scrollTo({ left: 0, top: document.body.scrollHeight, behavior: "smooth" });
 }
 let curImage;
+let curAudio;
+let soundId;
 async function loadBoard(b) {
+    document.body.classList.remove("no-wait");
     playData.locId = b._id;
     playData.save();
     let imgUrl = b.img;
+    let audioUrl = b.audio;
+    if (audioUrl) {
+        if (curAudio) {
+            (async () => {
+                await wait(500);
+                curAudio.fade(0.5, 0, 2000, soundId);
+                // curAudio.pause();
+                curAudio = null;
+                soundId = null;
+            })();
+        }
+    }
     if (imgUrl) {
         if (curImage) {
             await wait(500);
@@ -68,6 +83,29 @@ async function loadBoard(b) {
     }
     let cont = document.createElement("div");
     passage.appendChild(cont);
+    if (audioUrl) {
+        // let audio = document.createElement("audio");
+        // let audio = new Audio(`${serverURL}/projects/${playStory.owner}/${playStory.filename}/audio/${audioUrl}`);
+        // audio.className = "audio-elm";
+        // audio.loop = true;
+        // audio.controls = false;
+        // imgCont.appendChild(audio);
+        // audio.play();
+        // // audio.volume = 0.5;
+        // console.log(audio.volume);
+        // curAudio = audio;
+        var sound = new Howl({
+            src: [`${serverURL}/projects/${playStory.owner}/${playStory.filename}/audio/${audioUrl}`],
+            volume: 0.5,
+            loop: true,
+            onend: function () {
+                console.log('Finished!');
+            }
+        });
+        soundId = sound.play();
+        console.log(sound);
+        curAudio = sound;
+    }
     if (imgUrl) {
         let img = document.createElement("img");
         img.draggable = false;
@@ -211,5 +249,22 @@ let myCursor;
 let socket = io(serverURL);
 socket.on("connect", () => {
     initPlay();
+});
+document.addEventListener("keydown", e => {
+    let key = e.key.toLowerCase();
+    keys[key] = true;
+    if (key == "shift") {
+        if (_curWait)
+            setTimeout(() => {
+                if (_curWait)
+                    _curWait();
+            }, 100);
+        document.body.classList.add("no-wait");
+    }
+    else
+        document.body.classList.remove("no-wait");
+});
+document.addEventListener("keyup", e => {
+    keys[e.key.toLowerCase()] = false;
 });
 //# sourceMappingURL=play.js.map

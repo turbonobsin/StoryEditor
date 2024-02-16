@@ -174,13 +174,18 @@ b_addChoice.addEventListener("click",e=>{
     // loadEditBoard(sel);
     story.selectBoard(res[0]);
 });
+function getURLFix(){
+    let s = location.pathname.split("/");
+    if(s[s.length-1]?.includes(".")) s.pop();
+    return location.origin+(s[0]?.startsWith("/")?"":"/")+s.join("/");
+}
 b_play.addEventListener("click",e=>{
     if(!story) return;
     story._save();
     setPlayI(0);
     // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
     let url = new URL(location.href);
-    url.pathname += "play/index.html";
+    url.href = getURLFix()+"play/index.html";
     url.searchParams.set("email",story.owner);
     url.searchParams.set("pid",story.filename);
     // location.assign(url);
@@ -194,7 +199,7 @@ b_resumePlay.addEventListener("click",e=>{
     story._save();
     // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
     let url = new URL(location.href);
-    url.pathname += "play/index.html";
+    url.href = getURLFix()+"play/index.html";
     url.searchParams.set("email",story.owner);
     url.searchParams.set("pid",story.filename);
     // location.assign(url);
@@ -339,7 +344,8 @@ document.addEventListener("mouseup",e=>{
         story.deselectBoards();
         closeAllPanes();
     }
-    if(story.dragBoards.length != 0 || story.isPanning) story.save();
+    // if(story.dragBoards.length != 0 || story.isPanning) story.save();
+    if(story.dragBoards.length != 0) story.save();
     story.isPanning = false;
     story.dragBoards = [];
 });

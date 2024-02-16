@@ -40,3 +40,10 @@
 - changed images in play mode so they get used as the background with a cool animation
 - added image preview to boards in editor
 - added audio file support (but not use in play mode yet)
+
+### 2/15/24
+- toasts
+- save toast
+- added kinda glitchy skipping by holding shift
+- fixed adding some types of mp3 said they weren't allowed (mpeg versions)
+- added audio support with fade out

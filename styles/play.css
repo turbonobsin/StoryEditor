@@ -246,3 +246,8 @@ body.fade-out{
         scale:0.92;
     }
 } */
+
+body.no-wait * {
+    animation-duration:0.1s !important;
+    transition-duration:0.1s !important;
+}

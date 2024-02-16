@@ -23,9 +23,21 @@ function getPass(){
     return LSGetSet("pc",()=>prompt((LSGet("email")?"(We found that your account doesn't have a password)\n\n":"")+"Please choose a password\n\n**I recommend something you don't use anywhere else because these passwords aren't encrypted**"));
 }
 
+let _curWait:()=>void;
 function wait(delay:number){
+    if(keys.shift){
+        return new Promise<void>(resolve=>{
+            _curWait = resolve;
+            setTimeout(()=>{
+                _curWait = null;
+                resolve();
+            },100);
+        });
+    }
     return new Promise<void>(resolve=>{
+        _curWait = resolve;
         setTimeout(()=>{
+            _curWait = null;
             resolve();
         },delay);
     });

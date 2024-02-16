@@ -71,6 +71,21 @@ socket.on("connect",()=>{
 socket.on("disconnect",()=>{
     setConneted();
 });
+
+// alerts
+const toasts = document.querySelector(".toasts");
+socket.on("alert-save",()=>{
+    console.log("...project saved...");
+    let t = document.createElement("div");
+    t.className = "toast";
+    t.textContent = "SAVED";
+    toasts.appendChild(t);
+    setTimeout(()=>{
+        t.classList.add("remove-toast");
+        setTimeout(()=>t.remove(),300);
+    },2000);
+});
+
 // socket.on("requestUsername",(f:(email:string,name:string)=>void)=>{
 //     f(getEmail(),getUsername());
 // });
@@ -645,7 +660,7 @@ async function chooseAudio(){
         }
         
         // let allowedTypes = ["png","jpg","jpeg","bmp","gif"];
-        let allowedTypes = ["mp3","ogg","wav"];
+        let allowedTypes = ["mp3","ogg","wav","mpeg"];
         for(const f of e.dataTransfer.files){
             if(f.size >= 1e7){
                 alert("The size of the file: "+f.name+" is too large.");
