@@ -247,7 +247,11 @@ body.fade-out{
     }
 } */
 
-body.no-wait * {
+body.short-wait * {
     animation-duration:0.1s !important;
     transition-duration:0.1s !important;
+}
+body.no-wait * {
+    animation-duration:0s !important;
+    transition-duration:0s !important;
 }

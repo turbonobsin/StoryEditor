@@ -26,6 +26,8 @@ function getPass() {
 }
 let _curWait;
 function wait(delay) {
+    if (keys[" "])
+        return;
     if (keys.shift) {
         return new Promise(resolve => {
             _curWait = resolve;

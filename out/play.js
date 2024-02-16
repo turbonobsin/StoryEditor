@@ -259,10 +259,15 @@ document.addEventListener("keydown", e => {
                 if (_curWait)
                     _curWait();
             }, 100);
+        document.body.classList.add("short-wait");
+    }
+    if (key == " ") {
+        if (_curWait)
+            _curWait();
         document.body.classList.add("no-wait");
     }
     else
-        document.body.classList.remove("no-wait");
+        document.body.classList.remove("no-wait", "short-wait");
 });
 document.addEventListener("keyup", e => {
     keys[e.key.toLowerCase()] = false;
