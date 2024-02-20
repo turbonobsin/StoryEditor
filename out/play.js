@@ -48,7 +48,7 @@ function madeChoice(btn, button) {
     button.classList.add("picked");
 }
 function scrollDown() {
-    main.scrollTo({ left: 0, top: document.body.scrollHeight, behavior: "smooth" });
+    main.scrollTo({ left: 0, top: main.scrollHeight, behavior: "smooth" });
 }
 let curImage;
 let curAudio;
