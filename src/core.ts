@@ -122,11 +122,11 @@ class Story{
 
         // MOST UP TO DATE: 1/18/24 working
         if(false){
-            let res = this.start.addChoice(["Choice 1","Choice 2"]);
+            let res = this.start.addChoice(["Choice 1","Choice 2"],["red"]);
             res[0].x -= g_gap/2;
             res[1].x += g_gap/2;
             for(const c of res){
-                c.addChoice(["Another Choice 1","Another Choice 2"]);
+                c.addChoice(["Another Choice 1","Another Choice 2"],["red"]);
                 c.update();
             }
         }
@@ -377,7 +377,7 @@ class Story{
         for(let i = 0; i < o.boards.length; i++){
             let b = o.boards[i];
             let b1 = list[i];
-            b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list.find(w=>w._id == v.id)));
+            b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>v.c),b.btns.map((v:any)=>list.find(w=>w._id == v.id)));
             // b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list[v.id]));
             // if(i == 0) s.start.load();
             // for(const btn of b.btns){
@@ -555,7 +555,10 @@ class PathConnection extends Connection{
     }
     update(): void {
         super.update();
-        if(this.choice) this.choice.textContent = this.ref.label;
+        if(this.choice){
+            this.choice.textContent = this.ref.label;
+            this.choice.style.setProperty("--choice-col",this.ref.col);
+        }
     }
     remove(): void {
         super.remove();
@@ -727,7 +730,7 @@ class Board extends StoryObj{
         }
     }
 
-    addChoice(labels:string[],custom?:Board[],isOther=false){
+    addChoice(labels:string[],cols:string[],custom?:Board[],isOther=false){
         let i = 0;
         let w = (labels.length-1)*g_gap;
         let list:Board[] = [];
@@ -746,7 +749,7 @@ class Board extends StoryObj{
                 b = custom[i];
             }
             list.push(b);
-            btn = new StoryButton(l,b,this);
+            btn = new StoryButton(l,cols[i]||"#ff0000",b,this);
             this.buttons.push(btn);
             b.load();
 
@@ -891,15 +894,17 @@ class Board extends StoryObj{
     _done = false;
 }
 class StoryButton{
-    constructor(label:string,board:Board,par:Board){
+    constructor(label:string,col:string,board:Board,par:Board){
         this.label = label;
         this.board = board;
         this.par = par;
+        this.col = col;
     }
     label:string;
     board:Board;
     par:Board;
     path:PathConnection;
+    col:string;
 }
 
 function loadEditBoard(b:Board){
@@ -913,6 +918,12 @@ function loadEditBoard(b:Board){
     ta_text.value = b.text;
     // ta_choices.value = b.buttons.map(v=>"[["+v.label+"]]").join("\n");
 
+    let mainColorInp = pane_editBoard.querySelector(".choice-color-inp") as HTMLInputElement;
+    mainColorInp.oninput = function(){
+        
+    };
+    mainColorInp.style.display = "none"; // disabling for now until I get more time
+
     while(choiceList.children.length > 1){
         choiceList.removeChild(choiceList.children[0]);
     }
@@ -921,6 +932,8 @@ function loadEditBoard(b:Board){
         let c = list[i];
         let div = document.createElement("div");
         div.innerHTML = `
+            <!--<div class="choice-color"></div>-->
+            <input class="choice-color-inp" type="color">
             <div class="label"><input type="text" class="inp"></div>
             <button class="b-remove-choice">-</button>
         `;
@@ -947,6 +960,20 @@ function loadEditBoard(b:Board){
             // choiceList.removeChild(div);
             story.save();
         });
+
+        // let col = div.querySelector(".choice-color");
+        // col.addEventListener("click",e=>{
+            let inpCol = div.querySelector(".choice-color-inp") as HTMLInputElement;
+            if(!c.col.includes("#")) c.col = "#ff0000";
+            inpCol.value = c.col || "#ff0000";
+            // inpCol.click();
+            inpCol.oninput = function(){
+                c.col = inpCol.value;
+                c.board.updateConnections();
+                story.save();
+                socket.emit("s_recolorChoice",b._id,i,inpCol.value);
+            };
+        // });
     }
 
     i_title.oninput = function(){

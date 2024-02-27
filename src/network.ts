@@ -213,12 +213,25 @@ socket.on("renameChoice",(email:string,id:number,i:number,newtext:string)=>{
         loadEditBoard(b);
     }
 });
-socket.on("addChoice",(email:string,id:number,labels:string[],custom?:number[])=>{
+socket.on("recolorChoice",(email:string,id:number,i:number,newcol:string)=>{
     let b = story.getBoard(id);
     if(!b) return;
 
-    if(custom) b.addChoice(labels,custom.map(v=>story.allBoards.find(w=>w._id == v)),true);
-    else b.addChoice(labels,null,true);
+    let choice = b.buttons[i];
+    if(!choice) return;
+    choice.col = newcol;
+    b.update();
+    b.updateConnections();
+    if(_editBoard_b == b){
+        loadEditBoard(b);
+    }
+});
+socket.on("addChoice",(email:string,id:number,labels:string[],cols:string[],custom?:number[])=>{
+    let b = story.getBoard(id);
+    if(!b) return;
+
+    if(custom) b.addChoice(labels,cols,custom.map(v=>story.allBoards.find(w=>w._id == v)),true);
+    else b.addChoice(labels,cols,null,true);
 });
 socket.on("removeChoice",(email:string,id:number,i:number[],deleteBoard:boolean)=>{
     let b = story.getBoard(id);

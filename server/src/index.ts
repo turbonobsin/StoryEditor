@@ -226,7 +226,7 @@ class Story{
             let b = o.boards[i];
             if(!b) continue;
             let b1 = list[i];
-            b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list.find(w=>w._id == v.id)));
+            b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>v.c),b.btns.map((v:any)=>list.find(w=>w._id == v.id)));
         }
         for(const b of list){
             if(b) if(!b._loaded) b.load();
@@ -387,7 +387,7 @@ class Board extends StoryObj{
         }
     }
 
-    addChoice(labels:string[],custom?:Board[]){
+    addChoice(labels:string[],cols:string[],custom?:Board[]){
         let i = 0;
         let w = (labels.length-1)*g_gap;
         let list:Board[] = [];
@@ -406,7 +406,7 @@ class Board extends StoryObj{
                 b = custom[i];
             }
             list.push(b);
-            btn = new StoryButton(l,b,this);
+            btn = new StoryButton(l,b,this,cols[i]||"#ff0000");
             this.buttons.push(btn);
             b.load();
 
@@ -451,6 +451,7 @@ class Board extends StoryObj{
             btns:this.buttons.map(v=>{
                 let o2 = {
                     l:v.label,
+                    c:v.col,
                     id:v.board._id
                 };
                 return o2;
@@ -462,15 +463,17 @@ class Board extends StoryObj{
     _done = false;
 }
 class StoryButton{
-    constructor(label:string,board:Board,par:Board){
+    constructor(label:string,board:Board,par:Board,col:string){
         this.label = label;
         this.board = board;
         this.par = par;
+        this.col = col;
     }
     label:string;
     board:Board;
     par:Board;
     path:PathConnection;
+    col:string;
 }
 
 ////////////////////////////////////////
@@ -967,7 +970,7 @@ io.on("connection",socket=>{
 
         u.room().emit("renameChoice",u.email,id,i,newtext);
     });
-    socket.on("s_addChoice",async (id:number,labels:string[],custom?:number[])=>{
+    socket.on("s_recolorChoice",async (id:number,i:number,newcol:string)=>{
         let u = await getWho(socket);
         if(!u) return;
         let p = u.curProject;
@@ -975,11 +978,26 @@ io.on("connection",socket=>{
 
         let b = p.story.getBoard(id);
         if(!b) return;
-        if(custom) b.addChoice(labels,custom.map(v=>p.story.allBoards.find(w=>w._id == v)));
-        else b.addChoice(labels);
+        let choice = b.buttons[i];
+        if(!choice) return;
+        choice.col = newcol;
         p.story.save();
 
-        u.room().emit("addChoice",u.email,id,labels,custom);
+        u.room().emit("recolorChoice",u.email,id,i,newcol);
+    });
+    socket.on("s_addChoice",async (id:number,labels:string[],cols:string[]=[],custom?:number[])=>{
+        let u = await getWho(socket);
+        if(!u) return;
+        let p = u.curProject;
+        if(!p) return;
+
+        let b = p.story.getBoard(id);
+        if(!b) return;
+        if(custom) b.addChoice(labels,cols,custom.map(v=>p.story.allBoards.find(w=>w._id == v)));
+        else b.addChoice(labels,cols);
+        p.story.save();
+
+        u.room().emit("addChoice",u.email,id,labels,cols,custom);
     });
     socket.on("s_removeChoice",async (id:number,i:number[],deleteBoard:boolean)=>{
         let u = await getWho(socket);

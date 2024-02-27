@@ -105,11 +105,11 @@ class Story {
         this.makeConnection(this.origin, this.start, ConnectionType.start);
         // MOST UP TO DATE: 1/18/24 working
         if (false) {
-            let res = this.start.addChoice(["Choice 1", "Choice 2"]);
+            let res = this.start.addChoice(["Choice 1", "Choice 2"], ["red"]);
             res[0].x -= g_gap / 2;
             res[1].x += g_gap / 2;
             for (const c of res) {
-                c.addChoice(["Another Choice 1", "Another Choice 2"]);
+                c.addChoice(["Another Choice 1", "Another Choice 2"], ["red"]);
                 c.update();
             }
         }
@@ -357,7 +357,7 @@ class Story {
         for (let i = 0; i < o.boards.length; i++) {
             let b = o.boards[i];
             let b1 = list[i];
-            b1.addChoice(b.btns.map((v) => v.l), b.btns.map((v) => list.find(w => w._id == v.id)));
+            b1.addChoice(b.btns.map((v) => v.l), b.btns.map((v) => v.c), b.btns.map((v) => list.find(w => w._id == v.id)));
             // b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list[v.id]));
             // if(i == 0) s.start.load();
             // for(const btn of b.btns){
@@ -522,8 +522,10 @@ class PathConnection extends Connection {
     }
     update() {
         super.update();
-        if (this.choice)
+        if (this.choice) {
             this.choice.textContent = this.ref.label;
+            this.choice.style.setProperty("--choice-col", this.ref.col);
+        }
     }
     remove() {
         super.remove();
@@ -692,7 +694,7 @@ class Board extends StoryObj {
             this.visitorList.appendChild(div);
         }
     }
-    addChoice(labels, custom, isOther = false) {
+    addChoice(labels, cols, custom, isOther = false) {
         let i = 0;
         let w = (labels.length - 1) * g_gap;
         let list = [];
@@ -712,7 +714,7 @@ class Board extends StoryObj {
                 b = custom[i];
             }
             list.push(b);
-            btn = new StoryButton(l, b, this);
+            btn = new StoryButton(l, cols[i] || "#ff0000", b, this);
             this.buttons.push(btn);
             b.load();
             btn.path = this.story.makePath(this, b, btn);
@@ -855,15 +857,17 @@ class Board extends StoryObj {
     _done = false;
 }
 class StoryButton {
-    constructor(label, board, par) {
+    constructor(label, col, board, par) {
         this.label = label;
         this.board = board;
         this.par = par;
+        this.col = col;
     }
     label;
     board;
     par;
     path;
+    col;
 }
 function loadEditBoard(b) {
     if (!grid)
@@ -874,6 +878,10 @@ function loadEditBoard(b) {
     i_title.value = b.title;
     ta_text.value = b.text;
     // ta_choices.value = b.buttons.map(v=>"[["+v.label+"]]").join("\n");
+    let mainColorInp = pane_editBoard.querySelector(".choice-color-inp");
+    mainColorInp.oninput = function () {
+    };
+    mainColorInp.style.display = "none"; // disabling for now until I get more time
     while (choiceList.children.length > 1) {
         choiceList.removeChild(choiceList.children[0]);
     }
@@ -882,6 +890,8 @@ function loadEditBoard(b) {
         let c = list[i];
         let div = document.createElement("div");
         div.innerHTML = `
+            <!--<div class="choice-color"></div>-->
+            <input class="choice-color-inp" type="color">
             <div class="label"><input type="text" class="inp"></div>
             <button class="b-remove-choice">-</button>
         `;
@@ -908,6 +918,20 @@ function loadEditBoard(b) {
             // choiceList.removeChild(div);
             story.save();
         });
+        // let col = div.querySelector(".choice-color");
+        // col.addEventListener("click",e=>{
+        let inpCol = div.querySelector(".choice-color-inp");
+        if (!c.col.includes("#"))
+            c.col = "#ff0000";
+        inpCol.value = c.col || "#ff0000";
+        // inpCol.click();
+        inpCol.oninput = function () {
+            c.col = inpCol.value;
+            c.board.updateConnections();
+            story.save();
+            socket.emit("s_recolorChoice", b._id, i, inpCol.value);
+        };
+        // });
     }
     i_title.oninput = function () {
         b.title = i_title.value;

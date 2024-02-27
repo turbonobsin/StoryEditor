@@ -170,8 +170,8 @@ b_addChoice.addEventListener("click", e => {
     if (!name)
         return;
     let list = name.split(",");
-    let res = sel.addChoice(list);
-    socket.emit("s_addChoice", sel._id, list);
+    let res = sel.addChoice(list, []);
+    socket.emit("s_addChoice", sel._id, list, []);
     story.save();
     i_addChoice.value = "";
     // loadEditBoard(sel);
@@ -325,8 +325,8 @@ document.addEventListener("mousedown", e => {
                 }
                 if (cancel)
                     return;
-                par.addChoice(list, children);
-                socket.emit("s_addChoice", par._id, list, children.map(v => v._id));
+                par.addChoice(list, [], children);
+                socket.emit("s_addChoice", par._id, list, [], children.map(v => v._id));
                 story.save();
                 story.deselectBoards();
                 children.forEach(v => story.selectAddBoard(v));

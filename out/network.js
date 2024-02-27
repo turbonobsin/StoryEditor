@@ -215,14 +215,28 @@ socket.on("renameChoice", (email, id, i, newtext) => {
         loadEditBoard(b);
     }
 });
-socket.on("addChoice", (email, id, labels, custom) => {
+socket.on("recolorChoice", (email, id, i, newcol) => {
+    let b = story.getBoard(id);
+    if (!b)
+        return;
+    let choice = b.buttons[i];
+    if (!choice)
+        return;
+    choice.col = newcol;
+    b.update();
+    b.updateConnections();
+    if (_editBoard_b == b) {
+        loadEditBoard(b);
+    }
+});
+socket.on("addChoice", (email, id, labels, cols, custom) => {
     let b = story.getBoard(id);
     if (!b)
         return;
     if (custom)
-        b.addChoice(labels, custom.map(v => story.allBoards.find(w => w._id == v)), true);
+        b.addChoice(labels, cols, custom.map(v => story.allBoards.find(w => w._id == v)), true);
     else
-        b.addChoice(labels, null, true);
+        b.addChoice(labels, cols, null, true);
 });
 socket.on("removeChoice", (email, id, i, deleteBoard) => {
     let b = story.getBoard(id);
