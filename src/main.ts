@@ -24,6 +24,7 @@ b_theme.addEventListener("click",e=>{
 let b_open = document.querySelector(".b-open") as HTMLButtonElement;
 let b_create = document.querySelector(".b-create") as HTMLButtonElement;
 async function openDir(){
+    // @ts-ignore
     story.handle = await showDirectoryPicker({
         mode:"readwrite",
         id:"openDir"
@@ -271,8 +272,12 @@ function getM(e:MouseEvent){
     return {x,y};
 }
 
+let mx = 0;
+let my = 0;
 document.addEventListener("mousemove",e=>{
     if(!story) return;
+    mx = e.clientX;
+    my = e.clientY;
     
     let {x,y} = getM(e);
     let dx = x-story.lx;
@@ -284,7 +289,7 @@ document.addEventListener("mousemove",e=>{
         story.setPan(story.panX-dx,story.panY-dy);
     }
     else if(story.dragBoards.length){
-        story.moveBoards(story.dragBoards,dx,dy);
+        story.moveBoards(story.dragBoards,dx/story.zoom,dy/story.zoom);
     }
 });
 let mouseDown = [false,false,false];
@@ -369,6 +374,53 @@ document.addEventListener("keyup",e=>{
 });
 let _lw = -1;
 let _lh = -1;
+let mainCont = document.querySelector(".main") as HTMLElement;
+function zoomBy(r:number){    
+    if(!story) return;
+    
+    let panCont = grid;
+    let cont = grid;
+    
+    story.zoom *= r;
+    if(story.zoom < 0.1) story.zoom = 0.1;
+    if(story.zoom > 5) story.zoom = 5; //3
+    let r1 = panCont.getBoundingClientRect();
+
+    panCont.style.scale = story.zoom.toString();
+    mainCont.style.backgroundSize = (story.zoom*2)+"vw";
+
+    // FINAL!!! (for center zooming only)
+    // story.panX *= r;
+    // story.panY *= r;
+
+    let r2 = cont.getBoundingClientRect();
+    // let r2 = panCont.getBoundingClientRect();
+    
+    let a1 = r2.width-r1.width;
+    let b1 = r2.height-r1.height;
+    // let a1 = r1.width*r-r1.width;
+    // let b1 = r1.height*r-r1.height;
+
+    let cxd = mx-(r1.x+r1.width/2);
+    let cyd = my-(r1.y+r1.height/2);
+    let cx = cxd/r1.width;
+    let cy = cyd/r1.height;
+    
+    story.panX += a1*cx;
+    story.panY += b1*cy;
+
+    story.setPan(story.panX,story.panY);
+}
+document.addEventListener("wheel",e=>{
+    if(menus.children.length) return;
+    if(!e.ctrlKey) return;
+    e.preventDefault();
+    let speed = Math.abs(e.deltaY)/500;
+    let scale = 1.001+speed; //1.1
+    zoomBy(e.deltaY > 0 ? 1/scale : scale);
+},{
+    passive:false
+});
 if(false) document.addEventListener("wheel",e=>{
     let v = (e.deltaY > 0 ? -1 : 1) / 10;
     if(_lw == -1){

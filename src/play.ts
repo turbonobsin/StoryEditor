@@ -1,3 +1,5 @@
+page = 1; // play page
+
 class PlayData{
     locId:number;
     static load(){
@@ -102,6 +104,7 @@ async function loadBoard(b:Board){
         // // audio.volume = 0.5;
         // console.log(audio.volume);
         // curAudio = audio;
+        // @ts-ignore
         var sound = new Howl({
             src: [`${serverURL}/projects/${playStory.owner}/${playStory.filename}/audio/${audioUrl}`],
             volume: 0.5,

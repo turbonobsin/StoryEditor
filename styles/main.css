@@ -63,6 +63,7 @@ header > div{
     position:absolute;
     top:0px;
     left:0px;
+    transform-origin:center center;
 }
 .main{
     width:100%;

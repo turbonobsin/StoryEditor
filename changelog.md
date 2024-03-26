@@ -47,3 +47,7 @@
 - added kinda glitchy skipping by holding shift
 - fixed adding some types of mp3 said they weren't allowed (mpeg versions)
 - added audio support with fade out
+
+### 3/25/24
+- (after a long break from this project haha)
+- adding proper zooming support to editor

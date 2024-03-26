@@ -153,8 +153,8 @@ class Story{
         // this.updateAllBoards();
     }
     setZoom(v:number){
-        this.zoom = v;
-        grid.style.scale = v.toString();
+        // this.zoom = v;
+        // grid.style.scale = v.toString();
     }
 
     updateAllBoards(){
@@ -485,6 +485,7 @@ class Connection extends StoryObj{
         this.update();
     }
     update(): void {
+        if(page == 1) return;
         let d = this.div;
         let {x,y} = this.story.getRootPos();
         
