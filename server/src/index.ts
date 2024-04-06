@@ -84,6 +84,28 @@ export function readdir(path:string){
         });
     });
 }
+export function copyFile(path:string,to:string){
+    return new Promise<boolean>(resolve=>{
+        fs.copyFile(path,to,(err)=>{
+            if(err){
+                // console.log("err: ",err);
+                resolve(false);
+            }
+            else resolve(true);
+        });
+    });
+}
+export function copyDir(path:string,to:string){
+    return new Promise<boolean>(resolve=>{
+        fs.cp(path,to,{recursive:true},(err)=>{
+            if(err){
+                // console.log("err: ",err);
+                resolve(false);
+            }
+            else resolve(true);
+        });
+    });
+}
 
 ////////////////////////////////////////
 
@@ -170,6 +192,7 @@ class Story{
     getSaveObj(){
         let o = {
             filename:this.project.name,
+            display:this.project.display,
             _i:this._i,
             panX:this.panX,
             panY:this.panY,
@@ -635,7 +658,7 @@ class User{
         }
     }
 }
-async function openProjectReadOnly(email:string,name:string,code:string,f:(data:any)=>void){
+async function openProjectReadOnly(email:string,name:string,code:string,f?:(data:any)=>void){
     let p = await getProject(email,name);
     if(!p){
         if(f) f({err:"a project with that name doesn't exist",code:0});
@@ -1230,6 +1253,80 @@ io.on("connection",socket=>{
             return;
         }
         f(await access("users/"+email+".json"));
+    });
+
+    socket.on("exportPlay",async (email:string,pid:string,code:string,f:(res:any)=>void)=>{
+        if(!email) return;
+        if(!pid) return;
+        if(!f) return;
+
+        if(email.includes("/")) return;
+        if(pid.includes("/")) return;
+
+        let u = await getWho(socket);
+        if(!u){
+            f({err:"err: you don't have permission to do this"});
+            return;
+        }
+        // let p = await getProject(email,pid);
+        let p = await openProjectReadOnly(email,pid,code);
+        if(!p){
+            f({err:"err: can't get project"});
+            return;
+        }
+        
+        let dat = {
+            images:[],
+            audio:[]
+        };
+
+        let path = `projects/${email}/${pid}`;
+        let images = await readdir(path+"/images");
+        if(!images){
+            f({err:"err: can't get project"});
+            return;
+        }
+        let audio = await readdir(path+"/audio");
+        if(!audio){
+            f({err:"err: can't get project"});
+            return;
+        }
+        dat.images = images;
+        dat.audio = audio;
+
+        f(dat);
+        return;
+
+        // // depricated, moved to client side
+
+        // let path = `projects/${email}/${pid}`;
+        // path += "/exp";
+        // await mkdir(path);
+
+        // // 
+
+        // // let p = await openProjectReadOnly(email,name,code,f);
+        // // f(p?.serializeNetwork());
+        // let data = p.serializeNetwork();
+        
+        // // test
+        // await removeDir(path);
+
+        // path += "/_tmp";
+        // await mkdir(path);
+        
+        // await mkdir(path+"/lib");
+        // await mkdir(path+"/assets");
+        // await mkdir(path+"/styles");
+
+        // await copyFile("../../styles/play.css",path+"/styles/play.css");
+        // await copyFile("../../assets/icon.svg",path+"/assets/icon.svg");
+        // await copyFile("../../out/pre.js",path+"/lib/pre.js");
+        // await copyFile("../../out/socket.io.min.js",path+"/lib/socket.io.min.js");
+        // await copyFile("../../out/core.js",path+"/lib/core.js");
+        // await copyFile("../../out/play.js",path+"/lib/play.js");
+
+        // await write(path+"/lib/data.js",`const __storyData = ${JSON.stringify(data)};`,"utf8");
     });
 });
 

@@ -94,6 +94,7 @@ async function loadBoard(b:Board){
     passage.appendChild(cont);
 
     if(audioUrl){
+        let url = (isOffline ? `audio/${audioUrl}` : `${serverURL}/projects/${playStory.owner}/${playStory.filename}/audio/${audioUrl}`);
         // let audio = document.createElement("audio");
         // let audio = new Audio(`${serverURL}/projects/${playStory.owner}/${playStory.filename}/audio/${audioUrl}`);
         // audio.className = "audio-elm";
@@ -106,7 +107,7 @@ async function loadBoard(b:Board){
         // curAudio = audio;
         // @ts-ignore
         var sound = new Howl({
-            src: [`${serverURL}/projects/${playStory.owner}/${playStory.filename}/audio/${audioUrl}`],
+            src: [url],
             volume: 0.5,
             loop:true,
             onend: function () {
@@ -121,7 +122,7 @@ async function loadBoard(b:Board){
         let img = document.createElement("img");
         img.draggable = false;
         curImage = img;
-        img.src = `${serverURL}/projects/${playStory.owner}/${playStory.filename}/images/${imgUrl}`;
+        img.src = (isOffline ? `images/${imgUrl}` : `${serverURL}/projects/${playStory.owner}/${playStory.filename}/images/${imgUrl}`);
         let success = false;
         await new Promise<void>(resolve=>{
             img.onload = function(){
@@ -188,11 +189,18 @@ async function loadBoard(b:Board){
     }
 }
 
+const b_replay = document.querySelector(".b-replay") as HTMLButtonElement;
+b_replay.addEventListener("click",e=>{
+    if(!confirm("Are you sure you want to reset all progress and start this story over?\n\nYou won't be able to get your progress back.")) return;
+    localStorage.removeItem(AID+"PD");
+    location.reload();
+});
+
 async function initPlay(){
     let url = new URL(location.href);
     let email = url.searchParams.get("email");
     let pid = url.searchParams.get("pid");
-    if(!email || !pid){
+    if(!isOffline) if(!email || !pid){
         console.warn("Invalid search params");
         return;
     }
@@ -207,11 +215,15 @@ async function initPlay(){
             code = prompt("Please enter project pass code:");
             if(code == null) return;
         }
-        pdata = await new Promise<any>(resolve=>{
-            socket.emit("openProject_readonly",email,pid,code,((data:any)=>{
-                resolve(data);
-            }));
-        });
+        if(!isOffline){
+            pdata = await new Promise<any>(resolve=>{
+                socket.emit("openProject_readonly",email,pid,code,((data:any)=>{
+                    resolve(data);
+                }));
+            });
+        }
+        // @ts-ignore
+        else pdata = __storyData;
         if(!pdata){
             console.log("could not find pdata");
             return;
@@ -271,10 +283,20 @@ async function initPlay(){
 let myCursor:any;
 
 // @ts-ignore
-let socket:Socket = io(serverURL);
-socket.on("connect",()=>{
+let socket:Socket;
+if(!isOffline){
+    // @ts-ignore
+    socket = io(serverURL);
+    socket.on("connect",()=>{
+        initPlay();
+    });
+}
+else{
+    socket = {
+        emit(){}
+    };
     initPlay();
-});
+}
 
 document.addEventListener("keydown",e=>{
     let key = e.key.toLowerCase();

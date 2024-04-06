@@ -86,6 +86,7 @@ class Story{
         this.owner = owner;
     }
     filename:string;
+    display:string;
     owner:string;
     _i:number;
     start:Board;
@@ -355,6 +356,7 @@ class Story{
         }
         
         let s = new Story(o.filename,o.owner);
+        s.display = o.display;
         s._i = 0;
         s.setPan(o.panX,o.panY);
         let o1 = o.boards[0];

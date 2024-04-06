@@ -66,6 +66,7 @@ let b_playFromHere = document.querySelector(".b-play-from-here");
 let b_export = document.querySelector(".b-export");
 let b_import = document.querySelector(".b-import");
 let b_reset = document.querySelector(".b-reset");
+let b_exportPlay = document.querySelector(".b-export-play");
 let b_logout = document.querySelector(".b-logout");
 let l_g_email = document.querySelector(".l-g-email");
 const b_chooseBGImg = document.querySelector(".b-choose-bg-img");
@@ -155,6 +156,83 @@ b_reset.addEventListener("click", e => {
         return;
     resetFile();
 });
+b_exportPlay.addEventListener("click", e => {
+    // socket.emit("exportPlay",g_user.email,story.filename,(res:any)=>{
+    //     console.log("RES: ",res);
+    // });
+    exportPlay();
+});
+async function exportPlay() {
+    let name = story.display + " " + new Date().toLocaleDateString().replace(/\//g, "-");
+    // if(!confirm("Please select the folder which all the exported files will go into.\n(Make a new folder somewhere with the name of your project)")) return;
+    if (!confirm(`Please select the folder which all the exported project will go.\n\n(It will make a new folder called "${name}" and will put all the files in there.)`))
+        return;
+    let dirHandle = await showDirectoryPicker({
+        id: "exportPlay"
+    });
+    // let state = await dirHandle.requestPermission({mode:"readwrite"});
+    console.log(":: starting export");
+    createToast("STARTED Export", "export");
+    let code = LSGet("code-" + story.filename);
+    let pNetworkData = await new Promise(resolve => {
+        socket.emit("openProject_readonly", story.owner, story.filename, code, (data) => {
+            resolve(data);
+        });
+    });
+    if (!pNetworkData) {
+        alert("No project data found to save, quitting export");
+        return;
+    }
+    let serverDat = await new Promise(resolve => {
+        socket.emit("exportPlay", story.owner, story.filename, code, (data) => {
+            resolve(data);
+        });
+    });
+    if (!serverDat) {
+        alert("No server data for images or audio found, quitting export");
+        return;
+    }
+    async function write(dir, filename, data) {
+        let f = await dir.getFileHandle(filename, { create: true });
+        let stream = await f.createWritable();
+        stream.write(data);
+        stream.close();
+    }
+    async function writeBlob(dir, filename, blob) {
+        let f = await dir.getFileHandle(filename, { create: true });
+        let stream = await f.createWritable();
+        stream.write(blob);
+        stream.close();
+    }
+    async function mkdir(dir, dirname) {
+        return await dir.getDirectoryHandle(dirname, { create: true });
+    }
+    let root = await mkdir(dirHandle, name);
+    let stylesDir = await mkdir(root, "styles");
+    let assetsDir = await mkdir(root, "assets");
+    let libDir = await mkdir(root, "lib");
+    let imagesDir = await mkdir(root, "images");
+    let audioDir = await mkdir(root, "audio");
+    async function read(path) {
+        return await (await fetch(path)).text();
+    }
+    await write(stylesDir, "play.css", await read("styles/play.css"));
+    await write(assetsDir, "icon.svg", await read("assets/icon.svg"));
+    await write(libDir, "pre.js", await read("out/pre.js"));
+    await write(libDir, "core.js", await read("out/core.js"));
+    await write(libDir, "play.js", await read("out/play.js"));
+    await write(libDir, "data.js", `const __storyData = ${JSON.stringify(pNetworkData)};`);
+    await write(root, "index.html", await read("play/play_offline.html"));
+    let url = `${serverURL}/projects/${story.owner}/${story.filename}/`;
+    for (const fname of serverDat.images) {
+        await writeBlob(imagesDir, fname, await (await fetch(url + "images/" + fname)).blob());
+    }
+    for (const fname of serverDat.audio) {
+        await writeBlob(audioDir, fname, await (await fetch(url + "audio/" + fname)).blob());
+    }
+    console.log(":: finished export");
+    createToast("FINISHED Export", "export");
+}
 function setPlayI(i) {
     let str = localStorage.getItem("__SE-PD") || '{"locId":0}';
     let o = JSON.parse(str);

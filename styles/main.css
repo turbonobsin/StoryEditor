@@ -653,6 +653,9 @@ button{
     border-radius:3px;
     font-weight:bold;
 }
+.toast.export{
+    background-color:royalblue;
+}
 .toast.remove-toast{
     animation:RemoveToast 0.3s ease-out;
     opacity:0;

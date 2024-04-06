@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readdir = exports.mkdir = exports.removeDir = exports.removeFile = exports.read = exports.write = exports.access = void 0;
+exports.copyDir = exports.copyFile = exports.readdir = exports.mkdir = exports.removeDir = exports.removeFile = exports.read = exports.write = exports.access = void 0;
 const http = __importStar(require("http"));
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = require("socket.io");
@@ -125,6 +125,32 @@ function readdir(path) {
     });
 }
 exports.readdir = readdir;
+function copyFile(path, to) {
+    return new Promise(resolve => {
+        fs_1.default.copyFile(path, to, (err) => {
+            if (err) {
+                // console.log("err: ",err);
+                resolve(false);
+            }
+            else
+                resolve(true);
+        });
+    });
+}
+exports.copyFile = copyFile;
+function copyDir(path, to) {
+    return new Promise(resolve => {
+        fs_1.default.cp(path, to, { recursive: true }, (err) => {
+            if (err) {
+                // console.log("err: ",err);
+                resolve(false);
+            }
+            else
+                resolve(true);
+        });
+    });
+}
+exports.copyDir = copyDir;
 ////////////////////////////////////////
 class Story {
     constructor(project) {
@@ -199,6 +225,7 @@ class Story {
     getSaveObj() {
         let o = {
             filename: this.project.name,
+            display: this.project.display,
             _i: this._i,
             panX: this.panX,
             panY: this.panY,
@@ -1261,6 +1288,70 @@ io.on("connection", socket => {
             return;
         }
         f(await access("users/" + email + ".json"));
+    });
+    socket.on("exportPlay", async (email, pid, code, f) => {
+        if (!email)
+            return;
+        if (!pid)
+            return;
+        if (!f)
+            return;
+        if (email.includes("/"))
+            return;
+        if (pid.includes("/"))
+            return;
+        let u = await getWho(socket);
+        if (!u) {
+            f({ err: "err: you don't have permission to do this" });
+            return;
+        }
+        // let p = await getProject(email,pid);
+        let p = await openProjectReadOnly(email, pid, code);
+        if (!p) {
+            f({ err: "err: can't get project" });
+            return;
+        }
+        let dat = {
+            images: [],
+            audio: []
+        };
+        let path = `projects/${email}/${pid}`;
+        let images = await readdir(path + "/images");
+        if (!images) {
+            f({ err: "err: can't get project" });
+            return;
+        }
+        let audio = await readdir(path + "/audio");
+        if (!audio) {
+            f({ err: "err: can't get project" });
+            return;
+        }
+        dat.images = images;
+        dat.audio = audio;
+        f(dat);
+        return;
+        // // depricated, moved to client side
+        // let path = `projects/${email}/${pid}`;
+        // path += "/exp";
+        // await mkdir(path);
+        // // 
+        // // let p = await openProjectReadOnly(email,name,code,f);
+        // // f(p?.serializeNetwork());
+        // let data = p.serializeNetwork();
+        // // test
+        // await removeDir(path);
+        // path += "/_tmp";
+        // await mkdir(path);
+        // await mkdir(path+"/lib");
+        // await mkdir(path+"/assets");
+        // await mkdir(path+"/styles");
+        // await copyFile("../../styles/play.css",path+"/styles/play.css");
+        // await copyFile("../../assets/icon.svg",path+"/assets/icon.svg");
+        // await copyFile("../../out/pre.js",path+"/lib/pre.js");
+        // await copyFile("../../out/socket.io.min.js",path+"/lib/socket.io.min.js");
+        // await copyFile("../../out/core.js",path+"/lib/core.js");
+        // await copyFile("../../out/play.js",path+"/lib/play.js");
+        // await write(path+"/lib/data.js",`const __storyData = ${JSON.stringify(data)};`,"utf8");
     });
 });
 // app.use(express.urlencoded({extended:true}));

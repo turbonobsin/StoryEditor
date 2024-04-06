@@ -51,3 +51,8 @@
 ### 3/25/24
 - (after a long break from this project haha)
 - adding proper zooming support to editor
+
+### 4/6/24
+- added export play mode
+- fixed not being able to scroll unless over button by blocking pointer events on img-cont
+- added progress restart button to player and offline player

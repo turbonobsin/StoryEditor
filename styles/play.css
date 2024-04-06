@@ -1,3 +1,5 @@
+@import url(https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined);
+
 :root{
     --btn-col:rgb(141, 164, 189);
     --btn-bg:rgba(5,5,5,0.4);
@@ -122,6 +124,7 @@ body{
     top:25px;
     left:50%;
     transform-origin:left center;
+    pointer-events:none;
 }
 img{
     /* margin-left:50%; */
@@ -254,4 +257,35 @@ body.short-wait * {
 body.no-wait * {
     animation-duration:0s !important;
     transition-duration:0s !important;
+}
+
+.b-replay{
+    font-family:"Material Symbols Outlined";
+    position:absolute;
+    z-index:99;
+    top:10px;
+    left:10px;
+    color:rgba(255,255,255,0.3);
+    font-size:20px;
+    /* transform:rotate(-45deg); */
+    user-select:none;
+    -webkit-user-select:none;
+    transition:color 0.2s ease-out;
+}
+.b-replay:hover{
+    color:rgba(255,255,255,0.8);
+}
+.b-replay::after{
+    content:"Start Over";
+    font-family:"Arial";
+    font-size:14px;
+    opacity:0;
+    transition:opacity 0.2s ease-out;
+    margin-left:7px;
+    transform:translateY(-3px);
+    display:inline-block;
+    color:currentColor;
+}
+.b-replay:hover::after{
+    opacity:1;
 }

@@ -72,15 +72,19 @@ socket.on("disconnect", () => {
 const toasts = document.querySelector(".toasts");
 socket.on("alert-save", () => {
     console.log("...project saved...");
+    createToast("SAVED");
+});
+function createToast(text, className) {
     let t = document.createElement("div");
-    t.className = "toast";
-    t.textContent = "SAVED";
+    t.className = "toast" + (className ? " " + className : "");
+    t.textContent = text;
     toasts.appendChild(t);
     setTimeout(() => {
         t.classList.add("remove-toast");
         setTimeout(() => t.remove(), 300);
     }, 2000);
-});
+    return t;
+}
 // socket.on("requestUsername",(f:(email:string,name:string)=>void)=>{
 //     f(getEmail(),getUsername());
 // });
@@ -154,6 +158,8 @@ socket.on("moveCursor", (email, dx, dy) => {
 });
 let blockW = 111.333;
 document.addEventListener("mousemove", e => {
+    if (!("story" in window))
+        return;
     if (!story)
         return;
     if (story.isPanning)
