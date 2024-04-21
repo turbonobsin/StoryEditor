@@ -359,6 +359,7 @@ class Story{
         s.display = o.display;
         s._i = 0;
         s.setPan(o.panX,o.panY);
+        // let o1 = o.boards[o.start ?? 0];
         let o1 = o.boards[0];
         let root = new Board(s,o1.x,o1.y,o1.title,o1.text,o1.tags);
         root.img = o1.img;
@@ -368,8 +369,9 @@ class Story{
         root.load();
         
         let list:Board[] = [root];
-        for(let i = 1; i < o.boards.length; i++){
+        for(let i = 0; i < o.boards.length; i++){
             let b = o.boards[i];
+            if(b._id == root._id) continue;
             let b1 = new Board(s,b.x,b.y,b.title,b.text,b.tags);
             b1.img = b.img;
             b1.audio = b.audio;
@@ -394,6 +396,10 @@ class Story{
         }
 
         s._i = o._i;
+
+        if("moveStartBoard" in window) requestAnimationFrame(()=>{
+            if(o.start != null) moveStartBoard(o.start);
+        });
 
         return s;
     }
@@ -992,6 +998,11 @@ function loadEditBoard(b:Board){
 
     b.setImg(b.img,true);
     b.setAudio(b.audio,true);
+
+    if(b.story){
+        if(b.story.start == b) b_makeStart.disabled = true;
+        else b_makeStart.disabled = false;
+    }
 }
 
 // function setupInput(inp:HTMLInputElement,f:()=>void){

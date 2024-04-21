@@ -2,12 +2,12 @@ page = 1; // play page
 
 class PlayData{
     locId:number;
-    static load(){
+    static load(newStart=0){
         let str = localStorage.getItem("__SE-PD");
         if(!str){
             console.warn("No PD found, creating some");
             let p = new PlayData();
-            p.locId = 0;
+            p.locId = newStart;
             p.save();
             return p;
         }
@@ -257,12 +257,12 @@ async function initPlay(){
     }
     pdata.storyData.owner = pdata.owner;
     story = Story.load(pdata.storyData);
+    // story.start = story.getBoard(pdata.start);
     console.log("story",story);
     document.title = story.filename;
-
     // 
-    
-    playData = PlayData.load();
+    console.log("START: ",pdata.storyData.start);
+    playData = PlayData.load(pdata.storyData.start);
     // playStory = Story.load();
     playStory = story;
     for(const b of playStory.loadedObjs){

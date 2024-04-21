@@ -6,6 +6,20 @@ let i_title = pane_editBoard.querySelector(".i-title") as HTMLInputElement;
 let ta_text = pane_editBoard.querySelector(".ta-text") as HTMLTextAreaElement;
 let _editBoard_b:Board;
 
+let b_makeStart = pane_editBoard.querySelector(".b-make-start") as HTMLButtonElement;
+b_makeStart.addEventListener("click",e=>{
+    let b = _editBoard_b;
+    if(!b) return;
+    if(b == story.start) return;
+    socket.emit("s_makeStart",b._id,(res:any)=>{
+        if(res == 0){
+            moveStartBoard(b._id);
+            return;
+        }
+        alert("Error occurred while trying to make board the new start");
+    });
+});
+
 function setTheme(val:string){
     let html = document.body.parentElement;
     // html.style.filter = (val == "dark" ? "invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.8)" : "none");
@@ -268,7 +282,7 @@ function getURLFix(){
 b_play.addEventListener("click",e=>{
     if(!story) return;
     story._save();
-    setPlayI(0);
+    setPlayI(story.start._id);
     // location.pathname = `/play/index.html?email=${story.owner}&pid=${story.filename}`;
     let url = new URL(location.href);
     url.href = getURLFix()+"play/index.html";

@@ -229,6 +229,7 @@ class Story {
             _i: this._i,
             panX: this.panX,
             panY: this.panY,
+            start: this.start._id ?? 0,
             boards: this.loadedObjs.map(v => v.save()).filter(v => v != null)
         };
         return o;
@@ -259,7 +260,7 @@ class Story {
         let s = new Story(project);
         s.project = project;
         s._i = 0;
-        let o1 = o.boards.find((v) => v != null);
+        let o1 = (o.start == null ? (o.boards.find((v) => v != null)) : (o.boards.find((v) => v._id == o.start)));
         let root = new Board(s, o1.x, o1.y, o1.title, o1.text, o1.tags);
         root.img = o1.img;
         root.audio = o1.audio;
@@ -1352,6 +1353,26 @@ io.on("connection", socket => {
         // await copyFile("../../out/core.js",path+"/lib/core.js");
         // await copyFile("../../out/play.js",path+"/lib/play.js");
         // await write(path+"/lib/data.js",`const __storyData = ${JSON.stringify(data)};`,"utf8");
+    });
+    socket.on("s_makeStart", async (toId, f) => {
+        let u = await getWho(socket);
+        if (!u)
+            return;
+        let p = u.curProject;
+        if (!p)
+            return;
+        let start = p.story.start;
+        if (!start)
+            return;
+        let to = p.story.getBoard(toId);
+        if (!to)
+            return;
+        // p.story.origin.connections[0].to = to;
+        // p.story.origin.connections[0].update();
+        p.story.start = to;
+        p.story.save();
+        u.room().emit("moveStart", toId);
+        f(0);
     });
 });
 // app.use(express.urlencoded({extended:true}));

@@ -276,6 +276,25 @@ socket.on("deleteProject", () => {
     alert("The project you are currently editing has been deleted by the owner, refreshing page.");
     location.reload();
 });
+function moveStartBoard(toId) {
+    let tar = story.getBoard(toId);
+    if (!tar) {
+        alert("An error occured and we think your out of sync with the server, please refresh");
+        return;
+    }
+    let _start = story.start;
+    story.origin.connections[0].to = tar;
+    story.origin.connections[0].update();
+    story.start = tar;
+    if (_editBoard_b == tar)
+        loadEditBoard(tar);
+    if (_editBoard_b == _start)
+        loadEditBoard(_start);
+}
+socket.on("moveStart", (toId) => {
+    console.log("...got message: move start");
+    moveStartBoard(toId);
+});
 // socket.on("moveBoardsTo",(email:string,list:{id:number,x:number,y:number}[])=>{
 //     for(const b of list){
 //         story.moveBoardTo(email,b.id,b.x,b.y);
