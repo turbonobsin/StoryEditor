@@ -131,7 +131,7 @@ async function loadBoard(b) {
         imgCont.appendChild(img);
         // document.body.insertAdjacentElement("beforebegin",img);
         // await wait(4100); // time to delay before going past the image
-        await wait(4100);
+        await wait(7100);
         // }
         // wait for image anim
         // await wait(10000);
