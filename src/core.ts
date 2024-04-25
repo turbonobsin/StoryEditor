@@ -404,7 +404,8 @@ class Story{
 
         s._i = o._i;
 
-        if("moveStartBoard" in window) requestAnimationFrame(()=>{
+        // if("moveStartBoard" in window) requestAnimationFrame(()=>{
+        if(page == 0) requestAnimationFrame(()=>{
             if(o.start != null) moveStartBoard(o.start);
         });
 

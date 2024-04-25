@@ -383,7 +383,8 @@ class Story {
                 b.load();
         }
         s._i = o._i;
-        if ("moveStartBoard" in window)
+        // if("moveStartBoard" in window) requestAnimationFrame(()=>{
+        if (page == 0)
             requestAnimationFrame(() => {
                 if (o.start != null)
                     moveStartBoard(o.start);

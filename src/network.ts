@@ -159,7 +159,8 @@ socket.on("moveCursor",(email:string,dx:number,dy:number)=>{
 
 let blockW = 111.333;
 document.addEventListener("mousemove",e=>{
-    if(!("story" in window)) return;
+    // if(!("story" in window)) return;
+    if(page != 0) return;
     if(!story) return;
     if(story.isPanning) return;
     if(cursorList.length < 2) return;
@@ -169,6 +170,8 @@ document.addEventListener("mousemove",e=>{
         let dy = (e.clientY+story.panY)-y;
         dx /= blockW;
         dy /= blockW;
+        // dx *= story.zoom;
+        // dy *= story.zoom;
         
         // myCursor.div.style.left = x+"px";
         // myCursor.div.style.top = y+"px";
