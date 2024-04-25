@@ -61,26 +61,28 @@ async function loadBoard(b) {
     let imgUrl = b.img;
     let audioUrl = b.audio;
     if (audioUrl) {
-        if (curAudio) {
-            (async () => {
-                await wait(500);
+        // if(curAudio){
+        (async () => {
+            await wait(500);
+            if (curAudio)
                 curAudio.fade(0.5, 0, 2000, soundId);
-                // curAudio.pause();
-                curAudio = null;
-                soundId = null;
-            })();
-        }
+            // curAudio.pause();
+            curAudio = null;
+            soundId = null;
+        })();
+        // }
     }
     if (imgUrl) {
-        if (curImage) {
-            await wait(500);
-            document.body.classList.add("fade-out");
-            await wait(2000);
+        // if(curImage){
+        await wait(500);
+        document.body.classList.add("fade-out");
+        await wait(2000);
+        if (curImage)
             curImage.remove();
-            passage.textContent = "";
-            await wait(1000);
-            document.body.classList.remove("fade-out");
-        }
+        passage.textContent = "";
+        await wait(1000);
+        document.body.classList.remove("fade-out");
+        // }
     }
     let cont = document.createElement("div");
     passage.appendChild(cont);
@@ -128,6 +130,7 @@ async function loadBoard(b) {
         // cont.appendChild(img);
         imgCont.appendChild(img);
         // document.body.insertAdjacentElement("beforebegin",img);
+        // await wait(4100); // time to delay before going past the image
         await wait(4100);
         // }
         // wait for image anim
@@ -141,7 +144,8 @@ async function loadBoard(b) {
         div.textContent = l;
         cont.appendChild(div);
         scrollDown();
-        await wait(2000);
+        // await wait(2000);
+        await wait(3200);
     }
     if (b.buttons.length == 0) { // End
         let end = document.createElement("div");

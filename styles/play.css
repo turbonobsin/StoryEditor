@@ -129,7 +129,7 @@ body{
 img{
     /* margin-left:50%; */
     /* animation:FadeInImg forwards 4s ease-out; */
-    animation:FadeInImg2 forwards 14s cubic-bezier(0, 0, 0.41, 1.01);
+    animation:FadeInImg2 forwards 17s cubic-bezier(0, 0, 0.41, 1.01);
     /* margin-bottom:5rem; */
 
     /* margin:auto; */
@@ -186,23 +186,23 @@ img{
         scale:0.85;
         filter:blur(0px);
     }
-    20%{
+    32%{
         scale:1;
     }
-    30%{
+    44%{
         opacity:0.8;
     }
-    30%{
+    44%{
         opacity:1;
         filter:blur(0px);
         scale:1;
     }
-    38%{
+    53%{
         /* opacity:0.6; */
         opacity:0.4;
         filter:blur(10px) brightness(0.7);
     }
-    50%{
+    65%{
         scale:0.92;
     }
     100%{

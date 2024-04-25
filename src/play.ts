@@ -68,26 +68,26 @@ async function loadBoard(b:Board){
     let audioUrl = b.audio;
 
     if(audioUrl){
-        if(curAudio){
+        // if(curAudio){
             (async ()=>{
                 await wait(500);
-                curAudio.fade(0.5, 0, 2000, soundId);
+                if(curAudio) curAudio.fade(0.5, 0, 2000, soundId);
                 // curAudio.pause();
                 curAudio = null;
                 soundId = null;
             })();
-        }
+        // }
     }
     if(imgUrl){
-        if(curImage){
+        // if(curImage){
             await wait(500);
             document.body.classList.add("fade-out");
             await wait(2000);
-            curImage.remove();
+            if(curImage) curImage.remove();
             passage.textContent = "";
             await wait(1000);
             document.body.classList.remove("fade-out");
-        }
+        // }
     }
 
     let cont = document.createElement("div");
@@ -137,6 +137,7 @@ async function loadBoard(b:Board){
             // cont.appendChild(img);
             imgCont.appendChild(img);
             // document.body.insertAdjacentElement("beforebegin",img);
+            // await wait(4100); // time to delay before going past the image
             await wait(4100);
         // }
 
@@ -152,7 +153,8 @@ async function loadBoard(b:Board){
         div.textContent = l;
         cont.appendChild(div);
         scrollDown();
-        await wait(2000);
+        // await wait(2000);
+        await wait(3200);
     }
 
     if(b.buttons.length == 0){ // End
