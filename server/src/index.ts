@@ -216,9 +216,11 @@ class Story{
     }
     static async load(project:Project){
         let str = await read("projects/"+project.owner+"/"+project.name+"/data.json","utf8");
+        // console.log("DATA STR: ",str.length);
         let o:any;
         try{
             o = JSON.parse(str);
+            // console.log("O: ",o);
         }
         catch(e){
             return;

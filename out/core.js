@@ -348,6 +348,7 @@ class Story {
         root._id = o1._id;
         s.start = root;
         root.load();
+        // console.log("created root: ",root,o1);
         let list = [root];
         for (let i = 0; i < o.boards.length; i++) {
             let b = o.boards[i];
@@ -359,9 +360,14 @@ class Story {
             b1._id = b._id;
             list.push(b1);
         }
+        // console.log("board list: ",list);
         for (let i = 0; i < o.boards.length; i++) {
             let b = o.boards[i];
             let b1 = list[i];
+            if (!b1) {
+                console.warn("ERR NO b1 found:", b1, b, i);
+                continue;
+            }
             b1.addChoice(b.btns.map((v) => v.l), b.btns.map((v) => v.c), b.btns.map((v) => list.find(w => w._id == v.id)));
             // b1.addChoice(b.btns.map((v:any)=>v.l),b.btns.map((v:any)=>list[v.id]));
             // if(i == 0) s.start.load();
