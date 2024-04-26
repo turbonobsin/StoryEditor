@@ -69,7 +69,7 @@ async function loadBoard(b:Board){
 
     if(audioUrl){
         // if(curAudio){
-            (async ()=>{
+            await (async ()=>{
                 await wait(500);
                 if(curAudio) curAudio.fade(0.5, 0, 2000, soundId);
                 // curAudio.pause();
@@ -105,7 +105,8 @@ async function loadBoard(b:Board){
         // // audio.volume = 0.5;
         // console.log(audio.volume);
         // curAudio = audio;
-        // @ts-ignore
+        // @ts-ignore   
+        // if(curAudio) curAudio.fade(0.5,0,2000,soundId);
         var sound = new Howl({
             src: [url],
             volume: 0.5,
@@ -155,6 +156,9 @@ async function loadBoard(b:Board){
         scrollDown();
         // await wait(2000);
         await wait(3200);
+        // await wait(1500+l.length*20);
+        // await wait(1500+l.length*((l.match(/ /g)||"").length*2.1));
+        // await wait(300+l.length*((l.match(/ /g)||"").length*3));
     }
 
     if(b.buttons.length == 0){ // End
