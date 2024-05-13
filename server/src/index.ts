@@ -1,3 +1,5 @@
+const port = 3001;
+
 import * as http from "http";
 import express, { NextFunction, Request, Response } from "express";
 import {Server, Socket} from "socket.io";
@@ -1373,8 +1375,8 @@ io.on("connection",socket=>{
 //     });
 // });
 
-server.listen(3000,()=>{
-    console.log('listening on *:3000');
+server.listen(port,()=>{
+    console.log('listening on *:'+port);
 });
 
 let rl = readline.createInterface(process.stdin,process.stdout);
